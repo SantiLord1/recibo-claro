@@ -1,0 +1,1744 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recibo Claro</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Liquidación de sueldos y recibos para empresas uruguayas: sueldo mensual, aguinaldo, licencia, salario vacacional y egresos, con ayuda de IA.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500&display=swap">
+<style>
+/* Layout: office tool. Fixed sidebar of the payroll steps (panel → empleados → novedades → liquidación → recibos),
+   working area with one task per view. Numbers in a mono face with tabular figures; recibos look like the paper document. */
+:root{
+  --bg:#F2F4F6; --surface:#FFFFFF; --sunk:#E9EDF1; --ink:#17212B; --muted:#5B6874; --line:#D8DEE5;
+  --accent:#2343A6; --accent-ink:#FFFFFF; --accent-soft:#E7ECFA;
+  --money:#1F6B45; --money-soft:#E3F2EA; --warn:#9A5D00; --warn-soft:#FBF0DC; --bad:#B0261D; --bad-soft:#FBE5E3;
+  --paper:#FFFFFF; --paper-ink:#1B1B1B; --paper-line:#BFC6CC;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --r:10px; --shadow:0 1px 2px rgba(20,30,45,.06),0 4px 14px rgba(20,30,45,.05);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161C; --surface:#18202A; --sunk:#1F2934; --ink:#E6EBF0; --muted:#98A5B2; --line:#2C3845;
+  --accent:#8FA8F2; --accent-ink:#0F1726; --accent-soft:#22305A;
+  --money:#6CCB98; --money-soft:#173628; --warn:#F0B451; --warn-soft:#3A2C12; --bad:#F2867D; --bad-soft:#3E1D1A;
+  --paper:#FFFFFF; --paper-ink:#1B1B1B; --paper-line:#BFC6CC; --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161C; --surface:#18202A; --sunk:#1F2934; --ink:#E6EBF0; --muted:#98A5B2; --line:#2C3845;
+  --accent:#8FA8F2; --accent-ink:#0F1726; --accent-soft:#22305A;
+  --money:#6CCB98; --money-soft:#173628; --warn:#F0B451; --warn-soft:#3A2C12; --bad:#F2867D; --bad-soft:#3E1D1A;
+  --paper:#FFFFFF; --paper-ink:#1B1B1B; --paper-line:#BFC6CC; --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;line-height:1.25;text-wrap:balance}
+
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}
+.side{background:var(--surface);border-right:1px solid var(--line);padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:1.05rem}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--serif);font-size:1.05rem}
+.company{font-size:.82rem;color:var(--muted);line-height:1.35}
+.company b{display:block;color:var(--ink);font-weight:500}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:.93rem}
+.nav a:hover{background:var(--sunk)}
+.nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.nav .step{font-family:var(--mono);font-size:.72rem;color:var(--muted);width:16px}
+.nav a[aria-current="page"] .step{color:var(--accent)}
+.nav-sep{height:1px;background:var(--line);margin:8px 2px}
+.ai-state{margin-top:auto;font-size:.78rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:var(--money)} .dot.off{background:var(--warn)}
+
+.main{min-width:0;padding-block:22px 48px;padding-left:max(16px,2.2vw);padding-right:max(16px,env(safe-area-inset-right,0px),2.2vw)}
+.topbar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin-bottom:18px}
+.topbar h1{font-size:1.45rem;font-weight:600}
+.topbar .sub{color:var(--muted);font-size:.9rem;margin-top:2px}
+.period{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--muted)}
+.period input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:500;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.pill.ok{background:var(--money-soft);color:var(--money)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.acc{background:var(--accent-soft);color:var(--accent)}
+
+.stack{display:flex;flex-direction:column;gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-h{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+.card-h h2{font-size:1rem;font-weight:600}
+.card-h p{margin:2px 0 0;color:var(--muted);font-size:.85rem}
+.card-b{padding:16px 18px}
+.grid-kpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi span{display:block;font-size:.78rem;color:var(--muted)}
+.kpi b{display:block;font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;font-size:1.3rem;margin-top:4px;white-space:nowrap}
+.kpi em{display:block;font-style:normal;font-size:.78rem;color:var(--muted);margin-top:2px}
+.kpi.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.kpi.main span,.kpi.main em{color:var(--accent-ink);opacity:.85}
+.two{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:.9rem;font-weight:500;text-decoration:none;color:var(--ink);white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.pri:hover{filter:brightness(1.08);color:var(--accent-ink)}
+.btn.ai{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.btn.danger{color:var(--bad)} .btn.danger:hover{border-color:var(--bad)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:4px 10px;font-size:.82rem}
+.btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.linkbtn{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px;font-size:inherit}
+
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;color:inherit}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500;text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+td.num{white-space:nowrap}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:var(--sunk)}
+tfoot td{font-weight:600;border-top:2px solid var(--line);border-bottom:0}
+.who b{display:block;font-weight:500}
+.who span{font-size:.8rem;color:var(--muted)}
+.neg{color:var(--bad)}
+.liq{color:var(--money);font-weight:500}
+
+.nov input{width:74px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 6px;text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.85rem}
+.nov input:focus{border-color:var(--accent)}
+.nov input.changed{background:var(--accent-soft);border-color:var(--accent)}
+.nov th{white-space:normal;line-height:1.25;min-width:74px;vertical-align:bottom}
+.nov td.na{color:var(--muted);text-align:center}
+.nov td.who{min-width:150px}
+
+.form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px}
+.form .f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.form .f.w2{grid-column:span 2} .form .f.w3{grid-column:1/-1}
+.form label{font-size:.8rem;color:var(--muted);font-weight:500}
+.form input,.form select,.form textarea{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;width:100%}
+.form small{font-size:.75rem;color:var(--muted)}
+.check{display:flex;gap:8px;align-items:center;font-size:.9rem}
+.check input{width:auto}
+textarea{resize:vertical}
+
+.ai-box{border:1px solid var(--accent);background:var(--accent-soft);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.ai-box h3{font-size:.95rem;font-weight:600;color:var(--accent)}
+.ai-box textarea{width:100%;min-height:76px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface)}
+.ai-box p{margin:0;font-size:.86rem}
+.obs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.obs li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;padding:10px 12px;border-radius:8px;background:var(--sunk);font-size:.88rem}
+.obs li .pill{align-self:start}
+.obs li small{grid-column:2;color:var(--muted)}
+.note{font-size:.85rem;color:var(--muted);margin:0}
+.msg{font-size:.85rem;padding:8px 12px;border-radius:8px;background:var(--sunk)}
+.msg.ok{background:var(--money-soft);color:var(--money)} .msg.err{background:var(--bad-soft);color:var(--bad)}
+.confirm{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--warn-soft);color:var(--ink);font-size:.88rem}
+.empty{padding:28px 18px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:1rem;margin-bottom:4px}
+
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr) auto;gap:10px;align-items:center;font-size:.84rem}
+.bar-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{display:flex;height:12px;border-radius:4px;overflow:hidden;background:var(--sunk)}
+.bar i{display:block;height:100%}
+.bar i.l{background:var(--money)} .bar i.d{background:var(--warn)} .bar i.p{background:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+
+/* recibo: papel, igual en ambos temas */
+.recibo{background:var(--paper);color:var(--paper-ink);border:1px solid var(--paper-line);border-radius:4px;padding:26px 28px;max-width:760px;font-size:.86rem;box-shadow:var(--shadow)}
+.recibo h2{font-family:var(--serif);font-weight:500;font-size:1.25rem;letter-spacing:.01em}
+.rc-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;border-bottom:2px solid var(--paper-ink);padding-bottom:10px;margin-bottom:12px}
+.rc-head .r{text-align:right}
+.rc-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 18px;margin-bottom:14px}
+.rc-meta div span{display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:#5A6168}
+.rc-tbl{width:100%;border-collapse:collapse;font-size:.84rem}
+.rc-tbl th{color:#5A6168;border-bottom:1px solid var(--paper-ink);padding:6px 6px}
+.rc-tbl td{border-bottom:1px dotted var(--paper-line);padding:6px 6px;vertical-align:top}
+.rc-tbl td small{display:block;color:#5A6168;font-size:.74rem}
+.rc-tbl tfoot td{border-top:1px solid var(--paper-ink);border-bottom:0;font-weight:600}
+.rc-liq{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding:10px 12px;border:1px solid var(--paper-ink)}
+.rc-liq b{font-family:var(--mono);font-size:1.15rem}
+.rc-foot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin-top:22px;font-size:.78rem;color:#3D444A}
+.rc-sign{border-top:1px solid var(--paper-ink);padding-top:4px;text-align:center;margin-top:34px}
+.rc-pat{margin-top:12px;font-size:.74rem;color:#5A6168}
+.rc-notas{margin:10px 0 0;padding:8px 12px 8px 26px;border:1px dashed #9AA3AC;font-size:.74rem;color:#3B434B;display:grid;gap:3px}
+.rc-meta .w2{grid-column:span 2}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;padding:10px 16px 0;border-bottom:1px solid var(--line)}
+.tabs button{font:inherit;font-size:.86rem;padding:8px 12px;border:1px solid transparent;border-bottom:0;border-radius:8px 8px 0 0;background:none;color:var(--muted);cursor:pointer;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{background:var(--surface);border-color:var(--line);color:var(--ink);font-weight:600}
+.form .sec{grid-column:1/-1;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;padding-top:8px;border-top:1px solid var(--line);margin-top:4px}
+.form .sec:first-child{border-top:0;padding-top:0;margin-top:0}
+.mail{display:grid;gap:8px}
+.mail .row{display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px;align-items:baseline;font-size:.88rem}
+.mail .row span{color:var(--muted);font-size:.78rem}
+.lau td input{width:100%;min-width:90px}
+.lau td.x{width:1%}
+.paises{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.pais{font:inherit;text-align:left;display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);cursor:pointer}
+.pais:hover{border-color:var(--accent)}
+.pais b{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.pais span{font-weight:600}
+.pais small{font-size:.75rem;color:var(--muted)}
+.pais[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.pais[aria-checked="true"] b,.pais[aria-checked="true"] small{color:var(--accent)}
+.reglas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 24px}
+.reglas section h3{font-size:.9rem;margin-bottom:6px}
+.reglas ul{margin:0;padding-left:18px;display:grid;gap:5px;font-size:.88rem}
+.cmp th[scope=row]{font-weight:600;min-width:120px;max-width:150px;white-space:normal}
+.cmp td{font-size:.84rem;min-width:130px;vertical-align:top}
+.cmp .sel{background:var(--accent-soft)}
+@media (max-width:860px){.paises{grid-template-columns:repeat(3,minmax(0,1fr))}.reglas{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:520px){.paises{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.split{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:18px;align-items:start}
+.list{display:flex;flex-direction:column}
+.list button{display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 14px;cursor:pointer}
+.list button:hover{background:var(--sunk)}
+.list button[aria-current="true"]{background:var(--accent-soft)}
+.list button:last-child{border-bottom:0}
+.list .t{font-weight:500;font-size:.9rem}
+.list .s{font-size:.78rem;color:var(--muted)}
+.explain{display:flex;flex-direction:column;gap:8px;font-size:.9rem}
+.explain ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.explain .quote{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;white-space:pre-wrap}
+.toast{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.88rem;box-shadow:var(--shadow);z-index:20}
+.loading{display:inline-flex;align-items:center;gap:8px;color:var(--accent);font-size:.88rem}
+.loading::before{content:"";width:12px;height:12px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.loading::before{animation:none}}
+
+@media (max-width:980px){
+  .grid-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .two,.split{grid-template-columns:minmax(0,1fr)}
+  .form{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding-right:max(16px,env(safe-area-inset-right,0px));gap:12px}
+  .nav{flex-direction:row;flex-wrap:wrap;gap:4px}
+  .nav a{padding:6px 10px;font-size:.85rem;background:var(--sunk)}
+  .nav-sep,.ai-state,.company,.nav .step:empty{display:none}
+  .main{padding-left:max(16px,env(safe-area-inset-left,0px))}
+  .form{grid-template-columns:minmax(0,1fr)} .form .f.w2{grid-column:auto}
+  .rc-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .recibo{padding:18px 16px}
+  .bar-row{grid-template-columns:minmax(0,90px) minmax(0,1fr) auto}
+}
+@media print{
+  .side,.topbar,.no-print,.toast{display:none!important}
+  .app{display:block} .main{padding:0} body{background:#fff}
+  .recibo{box-shadow:none;border:0;max-width:none}
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">R</span>Recibo Claro</div>
+    <div class="company" id="company"></div>
+    <nav class="nav" id="nav" aria-label="Secciones">
+      <a href="#panel" data-v="panel"><span class="step"></span>Panel</a>
+      <a href="#empleados" data-v="empleados"><span class="step">1</span>Empleados</a>
+      <a href="#novedades" data-v="novedades"><span class="step">2</span>Novedades del mes</a>
+      <a href="#liquidacion" data-v="liquidacion"><span class="step">3</span>Liquidación</a>
+      <a href="#recibos" data-v="recibos"><span class="step">4</span>Recibos</a>
+      <span class="nav-sep" aria-hidden="true"></span>
+      <a href="#aguinaldo" data-v="aguinaldo"><span class="step"></span>Aguinaldo</a>
+      <a href="#egresos" data-v="egresos"><span class="step"></span>Egresos</a>
+      <a href="#locacion" data-v="locacion"><span class="step"></span>Locación</a>
+      <a href="#parametros" data-v="parametros"><span class="step"></span>Empresa y parámetros</a>
+    </nav>
+    <div class="ai-state"><span class="dot" id="aiDot"></span><span id="aiTxt">Conectando la IA…</span></div>
+  </aside>
+  <main class="main" id="main">
+    <div class="empty"><b>Cargando Recibo Claro…</b>Preparando empleados, novedades y recibos.</div>
+  </main>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script>
+// ---------- Motor de liquidación (Uruguay, valores 2026) ----------
+// Funciones puras: reciben empleado, novedades del mes y parámetros, y devuelven las líneas del recibo.
+// Fuentes de los valores: BPS Comunicado R 5/2026 (BPC, escala IRPF, deducciones), BPS tasas FONASA,
+// MTSS (salario mínimo 1/7/2026). Todo se puede editar en "Empresa y parámetros".
+var PARAM_DEFAULT = {
+  vigencia: "2026",
+  bpc: 6864,
+  smn: 25383,
+  topeJub: 288836,
+  jubPers: 15, frlPers: 0.1,
+  jubPat: 7.5, fonasaPat: 5, frlPat: 0.1, fgcl: 0.025, bse: 1.5,
+  // FONASA personal: [hasta 2,5 BPC] y [más de 2,5 BPC] por situación familiar
+  fonasa: { bajo: { solo: 3, hijos: 3, conyuge: 5, ambos: 5 }, alto: { solo: 4.5, hijos: 6, conyuge: 6.5, ambos: 8 } },
+  fonasaLimiteBpc: 2.5,
+  // IRPF: tope de cada franja en BPC mensuales y tasa
+  irpf: [[7, 0], [10, 10], [15, 15], [30, 24], [50, 25], [75, 27], [115, 31], [null, 36]],
+  irpfIncrementoBpc: 10, irpfIncremento: 6,
+  dedHijoBpcAnual: 20, dedDiscBpcAnual: 40,
+  dedTasaAlta: 14, dedTasaBaja: 8, dedLimiteBpc: 15,
+  recargoExtra: 100, recargoExtraDescanso: 150, nocturnidad: 20,
+  presentismo: 0,
+  // Unidad Indexada al 1/1/2026 y partidas de alimentación sin aportes (Ley 16.713): hasta 100 UI por día trabajado y 20% del sueldo
+  ui: 6.4237, alimTopeUI: 100, alimTopePct: 20,
+  // Subsidios que paga el BPS (estimación informativa en el recibo)
+  subsidioPct: 70, subsidioTope: 67754, paroPct: 50, paroMin: 8467, paroTope: 67754,
+  // Fondo de Solidaridad: importe mensual por categoría (BPS Comunicado R 5/2026)
+  fondo1: 286, fondo2: 572, fondo3: 1144, fondo4: 1049, fondo5: 1621,
+  // Ley 17.829: el trabajador cobra al menos el 35% (30% con garantía de alquiler o préstamos de cooperativas)
+  minCobro: 35, minCobroAG: 30,
+  // Ajuste anual de IRPF en la liquidación de diciembre (1 = sí, 0 = no)
+  ajusteAnual: 1
+};
+
+// Licencias especiales pagas (Ley 18.345 y leyes que la modificaron)
+var LIC_ESP = [
+  ["licEstudio", "estudio"], ["licPaternidad", "paternidad"], ["licMatrimonio", "matrimonio"], ["licDuelo", "duelo"],
+  ["licDiscapacidad", "hijo con discapacidad"], ["licExamen", "donación de sangre o PAP/mamografía"]
+];
+// Retenciones autorizadas por la Ley 17.829, en orden de prioridad (después de la pensión alimenticia)
+var RETS = [
+  ["retAlquiler", "A", "Garantía de alquiler"], ["retSindicalPct", "B", "Cuota sindical", true], ["retBrou", "C", "Crédito social BROU"],
+  ["retVivienda", "D", "Préstamo de vivienda (BHU, ANV, MEVIR)"], ["retSeguro", "E", "Seguro de vida colectivo"], ["retMutual", "F", "Cuota mutual"],
+  ["retPrestamo", "G", "Préstamo o cooperativa"], ["retConvenio", "H", "Convenio de pago con DGI o BPS"]
+];
+// Despidos especiales: multiplicador de la indemnización común o 6 sueldos más
+var DESPIDO_ESP = {
+  enfermedad: { nombre: "despido durante enfermedad", mult: 2, ley: "Decreto-Ley 14.407" },
+  accidente: { nombre: "despido tras accidente de trabajo", mult: 3, ley: "Ley 16.074" },
+  denuncia: { nombre: "despido por denunciar al BPS", mult: 3, ley: "Ley 16.713" },
+  embarazo: { nombre: "despido por embarazo o maternidad", extra: 6, ley: "Ley 11.577" },
+  acoso: { nombre: "despido por denunciar acoso sexual", extra: 6, ley: "Ley 18.561" },
+  discapacidad: { nombre: "despido de persona con discapacidad", extra: 6, ley: "Ley 19.691" }
+};
+
+function r2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+function nz(n) { n = Number(n); return isFinite(n) ? n : 0; }
+
+function fonasaTasa(e, gravado, P) {
+  var alto = gravado > P.fonasaLimiteBpc * P.bpc;
+  var k = e.conyuge && e.hijosFonasa ? "ambos" : e.conyuge ? "conyuge" : e.hijosFonasa ? "hijos" : "solo";
+  return P.fonasa[alto ? "alto" : "bajo"][k];
+}
+
+// Impuesto por franjas sobre una base mensual; devuelve {imp, marginal}
+function irpfFranjas(base, P, mult) {
+  var imp = 0, desde = 0, marg = 0;
+  for (var i = 0; i < P.irpf.length; i++) {
+    var hasta = P.irpf[i][0] == null ? Infinity : P.irpf[i][0] * P.bpc * (mult || 1);
+    var t = P.irpf[i][1];
+    if (base > desde) {
+      imp += (Math.min(base, hasta) - desde) * t / 100;
+      marg = t;
+    }
+    desde = hasta;
+  }
+  return { imp: imp, marginal: base > 0 ? marg : 0 };
+}
+
+// IRPF de un mes sobre la renta gravada (sin aguinaldo ni salario vacacional)
+function calcIrpf(renta, aportes, e, P) {
+  // aportes: aportes personales y Fondo de Solidaridad, que también se deducen
+  var base = renta > P.irpfIncrementoBpc * P.bpc ? renta * (1 + P.irpfIncremento / 100) : renta;
+  var f = irpfFranjas(base, P);
+  var dedHijos = nz(e.hijosIrpf) * P.dedHijoBpcAnual * P.bpc / 12;
+  var dedDisc = nz(e.discapacidadIrpf) * P.dedDiscBpcAnual * P.bpc / 12;
+  var ded = aportes + dedHijos + dedDisc;
+  var tasaDed = renta <= P.dedLimiteBpc * P.bpc ? P.dedTasaAlta : P.dedTasaBaja;
+  var irpf = Math.max(0, f.imp - ded * tasaDed / 100);
+  return { irpf: irpf, base: base, impuesto: f.imp, deducciones: ded, tasaDed: tasaDed, marginal: irpf > 0 ? f.marginal : 0, incremento: base !== renta };
+}
+
+function aportesPersonales(gravado, e, P, tasaFonasa) {
+  var baseJub = Math.min(gravado, P.topeJub);
+  var tf = tasaFonasa == null ? fonasaTasa(e, gravado, P) : tasaFonasa;
+  return { jub: baseJub * P.jubPers / 100, fonasa: gravado * tf / 100, frl: gravado * P.frlPers / 100, tasaFonasa: tf, baseJub: baseJub };
+}
+function aportesPatronales(gravado, P) {
+  var baseJub = Math.min(gravado, P.topeJub);
+  var o = { jub: baseJub * P.jubPat / 100, fonasa: gravado * P.fonasaPat / 100, frl: gravado * P.frlPat / 100, fgcl: gravado * P.fgcl / 100, bse: gravado * P.bse / 100 };
+  o.total = o.jub + o.fonasa + o.frl + o.fgcl + o.bse;
+  return o;
+}
+
+function jornalDe(e) { return e.tipo === "jornalero" ? nz(e.jornal) : nz(e.sueldo) / 30; }
+function horasDia(e) { return (nz(e.horasSemanales) || 48) / 6; }
+function valorHora(e) { return jornalDe(e) / horasDia(e); }
+
+// Jornal líquido para el salario vacacional: nominal menos aportes personales (BPS, FONASA, FRL)
+function jornalLiquido(e, P) {
+  var mensual = e.tipo === "jornalero" ? nz(e.jornal) * 25 : nz(e.sueldo);
+  var a = aportesPersonales(mensual, e, P);
+  return (mensual - a.jub - a.fonasa - a.frl) / (e.tipo === "jornalero" ? 25 : 30);
+}
+
+// Antigüedad en años completos a una fecha (AAAA-MM-DD)
+function antiguedad(desde, hasta) {
+  var a = new Date(desde + "T12:00:00"), b = new Date(hasta + "T12:00:00");
+  if (isNaN(a) || isNaN(b) || b < a) return { anios: 0, dias: 0 };
+  var anios = b.getFullYear() - a.getFullYear();
+  if (b.getMonth() < a.getMonth() || (b.getMonth() === a.getMonth() && b.getDate() < a.getDate())) anios--;
+  return { anios: Math.max(0, anios), dias: Math.round((b - a) / 86400000) + 1 };
+}
+// Días de licencia anual: 20, y desde el 5.º año 1 día más cada 4 años (5-7: 21, 8-11: 22, 12-15: 23…)
+function diasLicencia(anios) { return anios < 5 ? 20 : 20 + Math.floor(anios / 4); }
+
+function linea(concepto, monto, tipo, detalle, extra) {
+  var o = { concepto: concepto, monto: r2(monto), tipo: tipo, detalle: detalle || "" };
+  if (extra) for (var k in extra) o[k] = extra[k];
+  return o;
+}
+function fmtN(n, d) { return (Math.round(n * Math.pow(10, d || 0)) / Math.pow(10, d || 0)).toLocaleString("es-UY", { maximumFractionDigits: d || 0 }); }
+
+// ---------- Sueldo mensual ----------
+// n: novedades del mes. ctx (opcional): {promedio: nominal promedio de los últimos meses, anual: datos del año para el ajuste de IRPF de diciembre}
+function liquidarMes(e, n, P, ctx) {
+  n = n || {}; ctx = ctx || {};
+  var L = [], notas = [], alertas = [], jornal = jornalDe(e), hora = valorHora(e);
+  var jornalero = e.tipo === "jornalero";
+  var lic = nz(n.licencia), cert = nz(n.certificacion), acc = nz(n.accidente), paro = nz(n.paroDias), hFam = nz(n.hFamiliar);
+  var esp = LIC_ESP.filter(function (c) { return nz(n[c[0]]) > 0; });
+  var diasEsp = esp.reduce(function (s, c) { return s + nz(n[c[0]]); }, 0);
+  var espTxt = esp.map(function (c) { return c[1] + " " + fmtN(nz(n[c[0]]), 1) + (nz(n[c[0]]) === 1 ? " día" : " días"); }).concat(hFam > 0 ? ["familiar a cargo " + fmtN(hFam, 1) + " h"] : []).join(", ");
+  var diasTrab;
+  if (jornalero) {
+    var cargo = !(n.diasTrabajados == null || n.diasTrabajados === "");
+    var dias = cargo ? nz(n.diasTrabajados) : Math.max(0, 25 - lic - cert - acc - paro - diasEsp);
+    diasTrab = dias;
+    L.push(linea("Jornales trabajados", jornal * dias, "haber", fmtN(dias, 1) + " días × $ " + fmtN(jornal, 2) + (cargo ? "" : " (25 menos ausencias: no se cargaron los días)"), { gravado: true }));
+    if (lic > 0) L.push(linea("Jornales de licencia", jornal * lic, "haber", fmtN(lic, 1) + " días × $ " + fmtN(jornal, 2), { gravado: true }));
+    if (diasEsp > 0 || hFam > 0) L.push(linea("Licencias especiales pagas", jornal * diasEsp + hora * hFam, "haber", espTxt, { gravado: true }));
+  } else {
+    L.push(linea("Sueldo básico", nz(e.sueldo), "haber", "Sueldo mensual", { gravado: true }));
+    var resto = 30;
+    [["faltas", "Faltas", ""], ["certificacion", "Días con certificación médica", " · los paga el BPS"], ["accidente", "Días por accidente de trabajo", " · los cubre el BSE"], ["paroDias", "Días en seguro de paro", " · los paga el BPS"]].forEach(function (a) {
+      var d = Math.min(nz(n[a[0]]), resto);
+      if (d > 0) { resto -= d; L.push(linea(a[1], -jornal * d, "haber", fmtN(d, 1) + " días × $ " + fmtN(jornal, 2) + a[2], { gravado: true })); }
+    });
+    if (nz(n.faltas) + cert + acc + paro > 30) alertas.push({ nivel: "alta", texto: "Las faltas, certificaciones, accidente y seguro de paro suman más de 30 días." });
+    diasTrab = Math.max(0, 26 - (30 - resto) - lic - diasEsp);
+    if (diasEsp > 0 || hFam > 0) notas.push("Licencias especiales pagas, ya incluidas en el sueldo: " + espTxt + ".");
+  }
+  if (nz(n.hExtra) > 0) L.push(linea("Horas extra", hora * (1 + P.recargoExtra / 100) * nz(n.hExtra), "haber", fmtN(nz(n.hExtra), 1) + " h × $ " + fmtN(hora, 2) + " + " + P.recargoExtra + "%", { gravado: true }));
+  if (nz(n.hExtraDescanso) > 0) L.push(linea("Horas extra en descanso o feriado", hora * (1 + P.recargoExtraDescanso / 100) * nz(n.hExtraDescanso), "haber", fmtN(nz(n.hExtraDescanso), 1) + " h × $ " + fmtN(hora, 2) + " + " + P.recargoExtraDescanso + "%", { gravado: true }));
+  if (nz(n.hNoct) > 0) L.push(linea("Nocturnidad", hora * P.nocturnidad / 100 * nz(n.hNoct), "haber", fmtN(nz(n.hNoct), 1) + " h × " + P.nocturnidad + "% del valor hora", { gravado: true }));
+  if (nz(n.feriados) > 0) L.push(linea("Feriados pagos trabajados", jornal * nz(n.feriados), "haber", fmtN(nz(n.feriados), 0) + " día(s) pagados doble", { gravado: true }));
+  if (P.presentismo > 0 && !jornalero && nz(n.faltas) === 0) L.push(linea("Presentismo", nz(e.sueldo) * P.presentismo / 100, "haber", P.presentismo + "% del sueldo, sin faltas en el mes", { gravado: true }));
+  if (nz(n.comisiones) > 0) L.push(linea("Comisiones", nz(n.comisiones), "haber", "", { gravado: true }));
+  if (nz(n.otrosGravados) > 0) L.push(linea("Otros haberes gravados", nz(n.otrosGravados), "haber", n.otrosGravadosDetalle || "", { gravado: true }));
+  var gravado = L.reduce(function (s, l) { return s + (l.gravado ? l.monto : 0); }, 0);
+  gravado = Math.max(0, gravado);
+
+  // partida de alimentación: sin aportes hasta 100 UI por día trabajado y hasta el 20% del sueldo; el resto lleva aportes. Siempre paga IRPF.
+  var alim = nz(n.alimentacion), alimEx = 0;
+  if (alim > 0) {
+    var topeUI = P.alimTopeUI * P.ui * diasTrab, topePct = gravado * P.alimTopePct / 100;
+    alimEx = Math.max(0, Math.min(alim, topeUI, topePct));
+    var exc = alim - alimEx;
+    L.push(linea("Partida de alimentación", alim, "haber", "Sin aportes $ " + fmtN(alimEx, 2) + " (tope " + P.alimTopeUI + " UI × " + fmtN(diasTrab, 0) + " días y " + P.alimTopePct + "% del sueldo)" + (exc > 0.005 ? " · con aportes $ " + fmtN(exc, 2) : "") + " · paga IRPF", { alimentacion: true }));
+    gravado += exc;
+  }
+  if (nz(n.noGravados) > 0) L.push(linea("Haberes no gravados", nz(n.noGravados), "haber", n.noGravadosDetalle || "Viáticos con rendición u otros no gravados"));
+
+  var a = aportesPersonales(gravado, e, P);
+  var aportes = a.jub + a.fonasa + a.frl;
+  var fondo = nz(e.fondoCat) > 0 ? nz(P["fondo" + nz(e.fondoCat)]) : 0;
+  var rentaIrpf = gravado + alimEx;
+  var ir = calcIrpf(rentaIrpf, aportes + fondo, e, P);
+
+  // salario vacacional: sin aportes; IRPF a la tasa marginal del mes
+  var sv = 0;
+  if (lic > 0) {
+    var jl = jornalLiquido(e, P);
+    sv = jl * lic;
+    L.push(linea("Salario vacacional", sv, "haber", fmtN(lic, 1) + " días × jornal líquido $ " + fmtN(jl, 2) + " (sin aportes)", { vacacional: true }));
+  }
+
+  L.push(linea("Aporte jubilatorio", -a.jub, "descuento", P.jubPers + "% sobre $ " + fmtN(a.baseJub, 2) + (a.baseJub < gravado ? " (tope)" : "")));
+  L.push(linea("FONASA", -a.fonasa, "descuento", fmtN(a.tasaFonasa, 1) + "% · " + (gravado > P.fonasaLimiteBpc * P.bpc ? "más" : "hasta") + " de 2,5 BPC" + (e.conyuge ? " · cónyuge a cargo" : "") + (e.hijosFonasa ? " · hijos a cargo" : "")));
+  L.push(linea("FRL", -a.frl, "descuento", fmtN(P.frlPers, 3) + "%"));
+
+  var irpfSv = sv > 0 ? sv * ir.marginal / 100 : 0, irpfMes = ir.irpf + irpfSv, ajuste = null;
+  if (ctx.anual && P.ajusteAnual) {
+    // Ajuste anual (BPS Comunicado 13/2025): escala anual sobre las rentas del año; aguinaldo y vacacional a la tasa máxima alcanzada; menos lo ya retenido
+    var A = ctx.anual;
+    var baseA = nz(A.rentas) + rentaIrpf;
+    var fa = irpfFranjas(baseA, P, 12);
+    var dedA = nz(A.deducciones) + aportes + fondo + nz(e.hijosIrpf) * P.dedHijoBpcAnual * P.bpc + nz(e.discapacidadIrpf) * P.dedDiscBpcAnual * P.bpc;
+    var tasaA = baseA <= P.dedLimiteBpc * 12 * P.bpc ? P.dedTasaAlta : P.dedTasaBaja;
+    var impA = Math.max(0, fa.imp - dedA * tasaA / 100);
+    var extras = nz(A.extras) + sv;
+    var impEx = impA > 0 ? extras * fa.marginal / 100 : 0;
+    var totalA = impA + impEx, saldo = totalA - nz(A.retenido);
+    var topeDic = rentaIrpf * 0.2;   // en diciembre no se retiene más del 20% de la renta del mes
+    irpfMes = Math.min(Math.max(0, saldo), topeDic);
+    if (saldo > topeDic + 0.005) notas.push("El ajuste anual da $ " + fmtN(saldo, 2) + ", pero en diciembre se retiene como máximo el 20% de la renta del mes ($ " + fmtN(topeDic, 2) + "). El resto lo liquida el trabajador ante DGI.");
+    ajuste = { rentas: r2(baseA), deducciones: r2(dedA), tasaDed: tasaA, impuesto: r2(totalA), retenido: r2(nz(A.retenido)), saldo: r2(saldo), marginal: impA > 0 ? fa.marginal : 0 };
+    L.push(linea("IRPF (ajuste anual)", -irpfMes, "descuento", "Impuesto del año $ " + fmtN(totalA, 2) + " (rentas sin el 6% $ " + fmtN(baseA, 2) + "; deducciones $ " + fmtN(dedA, 2) + " × " + tasaA + "%" + (impEx > 0 ? "; aguinaldo y vacacional al " + fa.marginal + "%" : "") + ") − retenido en el año $ " + fmtN(nz(A.retenido), 2)));
+    if (saldo < -0.005) notas.push("El IRPF del año da $ " + fmtN(-saldo, 2) + " a favor del trabajador. No se devuelve en el recibo: lo recupera con la declaración jurada ante DGI.");
+  } else {
+    if (ir.irpf > 0) L.push(linea("IRPF", -ir.irpf, "descuento", "Impuesto $ " + fmtN(ir.impuesto, 2) + " − deducciones $ " + fmtN(ir.deducciones, 2) + " × " + ir.tasaDed + "%" + (ir.incremento ? " (base +6%)" : "")));
+    else L.push(linea("IRPF", 0, "descuento", "No corresponde: " + (ir.impuesto === 0 ? "la renta no supera el mínimo no imponible (7 BPC)" : "las deducciones cubren el impuesto")));
+    if (irpfSv > 0) L.push(linea("IRPF salario vacacional", -irpfSv, "descuento", "Tasa marginal " + ir.marginal + "%"));
+  }
+  if (fondo > 0) L.push(linea("Fondo de Solidaridad", -fondo, "descuento", "Categoría " + nz(e.fondoCat) + " · se deduce del IRPF", { otro: true }));
+  if (nz(n.adelantos) > 0) L.push(linea("Adelantos", -nz(n.adelantos), "descuento", "", { otro: true }));
+  if (nz(n.otrosDescuentos) > 0) L.push(linea("Otros descuentos", -nz(n.otrosDescuentos), "descuento", n.otrosDescuentosDetalle || "", { otro: true }));
+
+  var haberes = L.reduce(function (s, l) { return s + (l.tipo === "haber" ? l.monto : 0); }, 0);
+  var ret = aplicarRetenciones(L, e, P, { haberes: haberes, gravado: gravado, legales: aportes + irpfMes + fondo, adelantos: nz(n.adelantos), otros: nz(n.otrosDescuentos) }, alertas, false);
+
+  // avisos informativos: lo que paga el BPS o el BSE directamente al trabajador
+  var refMes = nz(ctx.promedio) || (jornalero ? jornal * 25 : nz(e.sueldo));
+  if (cert > 0) {
+    var subD = Math.min(P.subsidioTope / 30, refMes / 30 * P.subsidioPct / 100), diasSub = Math.max(0, cert - 3);
+    notas.push("Certificación médica: " + fmtN(cert, 0) + " días que no paga la empresa. El BPS paga el subsidio por enfermedad (" + P.subsidioPct + "% del promedio, desde el 4.º día; desde el 1.º si hubo internación): unos $ " + fmtN(subD * diasSub, 0) + " por " + fmtN(diasSub, 0) + " días, estimado.");
+  }
+  if (acc > 0) notas.push("Accidente de trabajo: " + fmtN(acc, 0) + " días que cubre el BSE, no la empresa. Recordá hacer la denuncia del accidente al BSE.");
+  if (paro > 0) {
+    var est = jornalero ? Math.min(P.paroTope, 12 * jornal) * Math.min(paro, 25) / 25 : Math.max(P.paroMin, Math.min(P.paroTope, refMes * P.paroPct / 100)) * Math.min(paro, 30) / 30;
+    notas.push("Seguro de paro: " + fmtN(paro, 0) + " días que no paga la empresa. El BPS paga el subsidio (" + (jornalero ? "12 jornales por mes" : P.paroPct + "% del promedio de los últimos 6 meses") + ", mínimo $ " + fmtN(P.paroMin, 0) + " y tope $ " + fmtN(P.paroTope, 0) + " por mes): unos $ " + fmtN(est, 0) + ", estimado. Si es por reducción de jornada, el subsidio es proporcional a lo que deja de trabajar.");
+  }
+
+  var pat = aportesPatronales(gravado, P);
+  var rec = cerrarRecibo(L, { gravado: r2(gravado), irpf: r2(irpfMes), aportes: r2(aportes), patronal: pat, tasaFonasa: a.tasaFonasa, marginal: ajuste ? ajuste.marginal : ir.marginal, irpfInfo: ir });
+  rec.notas = notas; rec.alertas = alertas;
+  var t = rec.totales;
+  t.rentaIrpf = r2(rentaIrpf); t.dedAportes = r2(aportes + fondo); t.sv = r2(sv); t.fondo = r2(fondo); t.retenciones = r2(ret); t.alimExenta = r2(alimEx); t.diasTrab = diasTrab;
+  if (ajuste) rec.ajusteIrpf = ajuste;
+  return rec;
+}
+
+// Pensión alimenticia y retenciones de la Ley 17.829, con el mínimo que tiene que cobrar el trabajador.
+// b: {haberes, gravado, legales (aportes, IRPF y Fondo), adelantos, otros}. soloPension: en aguinaldo y egreso solo se aplica la pensión en %.
+function aplicarRetenciones(L, e, P, b, alertas, soloPension) {
+  var liqLegal = b.haberes - b.legales;                 // nominal menos IRPF y aportes: base del mínimo legal
+  var disponible = liqLegal - nz(b.adelantos) - nz(b.otros);
+  var total = 0;
+  var pv = nz(e.pensionValor), pt = e.pensionTipo;
+  if (pt && pt !== "no" && pv > 0 && !(soloPension && pt === "monto")) {
+    var pm = pt === "pctLiquido" ? liqLegal * pv / 100 : pt === "pctNominal" ? b.haberes * pv / 100 : pv;
+    pm = Math.max(0, Math.min(pm, disponible));
+    L.push(linea("Pensión alimenticia", -pm, "descuento", "Retención judicial" + (e.pensionBenef ? " a favor de " + e.pensionBenef : "") + (pt === "monto" ? "" : " · " + fmtN(pv, 2) + "% del " + (pt === "pctLiquido" ? "líquido (nominal menos aportes e IRPF)" : "nominal")), { otro: true, retencion: true }));
+    total += pm;
+    if (liqLegal - total < liqLegal * P.minCobro / 100 - 0.005) alertas.push({ nivel: "media", texto: "La pensión alimenticia le deja menos del " + P.minCobro + "% del líquido. Revisá el oficio judicial." });
+  }
+  if (soloPension) return total;
+  RETS.forEach(function (r) {
+    var v = nz(e[r[0]]); if (!(v > 0)) return;
+    var monto = r[3] ? b.gravado * v / 100 : v;
+    var piso = liqLegal * (r[1] === "A" || r[1] === "G" ? P.minCobroAG : P.minCobro) / 100;
+    var lugar = Math.max(0, Math.min(liqLegal - nz(b.otros) - piso - total, disponible - total));
+    var take = Math.min(monto, lugar);
+    var corte = take < monto - 0.005;
+    if (corte) alertas.push({ nivel: "media", texto: r[2] + ": se retienen " + fmtN(take, 2) + " de " + fmtN(monto, 2) + " para respetar el mínimo de cobro del " + (r[1] === "A" || r[1] === "G" ? P.minCobroAG : P.minCobro) + "% (Ley 17.829)." });
+    if (take > 0.005 || corte) L.push(linea(r[2], -take, "descuento", "Ley 17.829, literal " + r[1] + (r[3] ? " · " + fmtN(v, 2) + "% del nominal" : "") + (corte ? " · recortado de $ " + fmtN(monto, 2) + " por el mínimo legal" : ""), { otro: true, retencion: true }));
+    total += take;
+  });
+  return total;
+}
+
+function cerrarRecibo(L, info) {
+  var haberes = 0, desc = 0;
+  L.forEach(function (l) { if (l.tipo === "haber") haberes += l.monto; else if (l.tipo === "descuento") desc += -l.monto; });
+  var pat = info.patronal || { total: 0 };
+  return {
+    lineas: L,
+    totales: {
+      haberes: r2(haberes), descuentos: r2(desc), liquido: r2(haberes - desc),
+      gravado: info.gravado, aportes: info.aportes, irpf: info.irpf,
+      patronal: r2(pat.total), patronalDetalle: { jub: r2(pat.jub || 0), fonasa: r2(pat.fonasa || 0), frl: r2(pat.frl || 0), fgcl: r2(pat.fgcl || 0), bse: r2(pat.bse || 0) },
+      costo: r2(haberes + (pat.total || 0)),
+      otrosDesc: r2(L.reduce(function (s, l) { return s + (l.otro || l.concepto === "Adelantos" || l.concepto === "Otros descuentos" ? -l.monto : 0); }, 0)),
+      tasaFonasa: info.tasaFonasa, marginal: info.marginal
+    }
+  };
+}
+
+// ---------- Aguinaldo ----------
+// meses: [{periodo, gravado, estimado}] del semestre (dic-may o jun-nov)
+function liquidarAguinaldo(e, meses, P) {
+  var total = meses.reduce(function (s, m) { return s + nz(m.gravado); }, 0);
+  var ag = total / 12;
+  var L = [], alertas = [];
+  var est = meses.filter(function (m) { return m.estimado; }).length;
+  L.push(linea("Aguinaldo", ag, "haber", "1/12 de $ " + fmtN(total, 2) + " cobrados en " + meses.length + " meses" + (est ? " (" + est + " estimado" + (est > 1 ? "s" : "") + " con el sueldo actual)" : ""), { gravado: true }));
+  // la tasa de FONASA y la marginal de IRPF salen del sueldo habitual del mes
+  var ref = liquidarMes(e, {}, P);
+  var a = aportesPersonales(ag, e, P, ref.totales.tasaFonasa);
+  L.push(linea("Aporte jubilatorio", -a.jub, "descuento", P.jubPers + "%"));
+  L.push(linea("FONASA", -a.fonasa, "descuento", fmtN(a.tasaFonasa, 1) + "% (misma tasa que el sueldo)"));
+  L.push(linea("FRL", -a.frl, "descuento", fmtN(P.frlPers, 3) + "%"));
+  var irpf = ag * ref.totales.marginal / 100;
+  L.push(linea("IRPF", -irpf, "descuento", ref.totales.marginal ? "Tasa marginal del sueldo: " + ref.totales.marginal + "%" : "No corresponde: el sueldo no paga IRPF"));
+  aplicarRetenciones(L, e, P, { haberes: ag, gravado: ag, legales: a.jub + a.fonasa + a.frl + irpf }, alertas, true);
+  var pat = aportesPatronales(ag, P);
+  var rec = cerrarRecibo(L, { gravado: r2(ag), irpf: r2(irpf), aportes: r2(a.jub + a.fonasa + a.frl), patronal: pat, tasaFonasa: a.tasaFonasa, marginal: ref.totales.marginal });
+  rec.alertas = alertas;
+  return rec;
+}
+
+// Semestre de aguinaldo para un período de pago: junio → dic(año-1) a may; diciembre → jun a nov
+function semestreDe(periodo) {
+  var y = +periodo.slice(0, 4), m = +periodo.slice(5, 7);
+  var out = [];
+  if (m <= 6) { out.push((y - 1) + "-12"); for (var i = 1; i <= 5; i++) out.push(y + "-" + String(i).padStart(2, "0")); }
+  else { for (var j = 6; j <= 11; j++) out.push(y + "-" + String(j).padStart(2, "0")); }
+  return out;
+}
+
+// ---------- Egreso ----------
+// d: {fecha, motivo: despido|despido_enfermedad|despido_accidente|despido_denuncia|despido_embarazo|despido_acoso|despido_discapacidad|renuncia|mutuo|fin, diasMes, licenciaPendiente, mesesSemestre:[{periodo,gravado,estimado}]}
+function liquidarEgreso(e, d, P) {
+  var L = [], jornal = jornalDe(e), jornalero = e.tipo === "jornalero";
+  var ant = antiguedad(e.ingreso, d.fecha);
+  var fecha = new Date(d.fecha + "T12:00:00");
+  var diasMes = d.diasMes == null || d.diasMes === "" ? fecha.getDate() : nz(d.diasMes);
+  var sueldoDias = jornalero ? jornal * diasMes : Math.min(nz(e.sueldo), jornal * diasMes);
+  L.push(linea(jornalero ? "Jornales del mes" : "Sueldo de los días trabajados", sueldoDias, "haber", fmtN(diasMes, 0) + " días × $ " + fmtN(jornal, 2), { gravado: true }));
+
+  // licencia: pendiente del año anterior + proporcional del año en curso
+  var inicioAnio = new Date(fecha.getFullYear() + "-01-01T12:00:00");
+  var ingreso = new Date(e.ingreso + "T12:00:00");
+  var desde = ingreso > inicioAnio ? ingreso : inicioAnio;
+  var diasAnio = Math.max(0, Math.round((fecha - desde) / 86400000) + 1);
+  var anual = diasLicencia(ant.anios);
+  var prop = diasAnio / 30 * anual / 12;
+  var licDias = r2(prop + nz(d.licenciaPendiente));
+  var licNoGozada = licDias * jornal;
+  L.push(linea("Licencia no gozada", licNoGozada, "haber", fmtN(licDias, 2) + " días (" + fmtN(prop, 2) + " del año + " + fmtN(nz(d.licenciaPendiente), 0) + " pendientes) × $ " + fmtN(jornal, 2) + " · sin aportes", { licencia: true }));
+  var jl = jornalLiquido(e, P);
+  var sv = licDias * jl;
+  L.push(linea("Salario vacacional", sv, "haber", fmtN(licDias, 2) + " días × jornal líquido $ " + fmtN(jl, 2) + " · sin aportes", { vacacional: true }));
+
+  // aguinaldo proporcional del semestre en curso
+  var meses = (d.mesesSemestre || []).slice();
+  var totalSem = meses.reduce(function (s, m) { return s + nz(m.gravado); }, 0) + sueldoDias;
+  var agProp = totalSem / 12;
+  L.push(linea("Aguinaldo proporcional", agProp, "haber", "1/12 de $ " + fmtN(totalSem, 2) + " del semestre", { gravado: true }));
+
+  // indemnización por despido (exenta de aportes e IRPF)
+  var indem = 0, indemDet = "", extra = 0, espDef = null;
+  var despido = String(d.motivo || "").indexOf("despido") === 0;
+  if (despido) {
+    espDef = DESPIDO_ESP[String(d.motivo).replace(/^despido_?/, "")] || null;
+    var base = 0;
+    if (jornalero) {
+      var diasTrab = ant.dias * 25 / 30;
+      var jornales = Math.min(150, Math.floor(diasTrab / 25) * 2);
+      base = jornal * (1 + 1 / 12);
+      if (diasTrab >= 100) {
+        indem = jornales * base;
+        indemDet = jornales + " jornales (2 cada 25 días trabajados, máx. 150) + incidencia de aguinaldo";
+      } else indemDet = "No corresponde: menos de 100 jornadas trabajadas";
+    } else {
+      var anios = Math.min(6, Math.max(1, Math.ceil(ant.dias / 365.25)));
+      // mes de referencia: el sueldo, o el promedio de lo cobrado en los últimos meses si es mayor (comisiones, extras)
+      var prom = nz(d.promedioMensual), ref0 = Math.max(nz(e.sueldo), prom);
+      base = ref0 * (1 + 1 / 12) + anual * jl / 12;
+      if (ant.dias >= 90) {
+        indem = base * anios;
+        indemDet = anios + (anios === 1 ? " mes" : " meses") + " (1 por año o fracción, máx. 6) de $ " + fmtN(base, 2) + (prom > nz(e.sueldo) ? " (promedio mensual con variables)" : "") + " con incidencia de aguinaldo y salario vacacional";
+      } else indemDet = "No corresponde: menos de 90 días de antigüedad";
+    }
+    L.push(linea("Indemnización por despido", indem, "haber", indemDet + " · exenta de aportes e IRPF", { indemnizacion: true }));
+    if (espDef) {
+      var extraDet;
+      if (espDef.mult) { extra = indem * (espDef.mult - 1); extraDet = "La indemnización común se paga " + (espDef.mult === 2 ? "doble" : "triple") + " (" + espDef.ley + "): $ " + fmtN(indem, 2) + " × " + (espDef.mult - 1) + " más"; }
+      else { extra = jornalero ? 150 * base : espDef.extra * base; extraDet = (jornalero ? "150 jornales" : espDef.extra + " sueldos de $ " + fmtN(base, 2)) + " además de la común (" + espDef.ley + ")"; }
+      L.push(linea("Indemnización especial por " + espDef.nombre, extra, "haber", extraDet + " · exenta de aportes e IRPF", { indemnizacion: true }));
+    }
+  }
+
+  var gravado = sueldoDias + agProp;
+  var gravadoRegular = sueldoDias;
+  var ref = liquidarMes(e, {}, P);
+  var a = aportesPersonales(gravado, e, P, ref.totales.tasaFonasa);
+  var aReg = aportesPersonales(gravadoRegular, e, P, ref.totales.tasaFonasa);
+  var ir = calcIrpf(gravadoRegular + licNoGozada, aReg.jub + aReg.fonasa + aReg.frl, e, P);
+  var marg = ir.marginal || ref.totales.marginal;
+  var irpfExtra = (agProp + sv) * marg / 100;
+  L.push(linea("Aporte jubilatorio", -a.jub, "descuento", P.jubPers + "% sobre sueldo y aguinaldo"));
+  L.push(linea("FONASA", -a.fonasa, "descuento", fmtN(a.tasaFonasa, 1) + "%"));
+  L.push(linea("FRL", -a.frl, "descuento", fmtN(P.frlPers, 3) + "%"));
+  L.push(linea("IRPF", -(ir.irpf + irpfExtra), "descuento", (ir.irpf + irpfExtra) > 0 ? "Sueldo y licencia por escala; aguinaldo y vacacional a la tasa marginal " + marg + "%" : "No corresponde"));
+  if (nz(d.adelantos) > 0) L.push(linea("Adelantos", -nz(d.adelantos), "descuento", "", { otro: true }));
+  var alertas = [];
+  var habSinIndem = L.reduce(function (s, l) { return s + (l.tipo === "haber" && !l.indemnizacion ? l.monto : 0); }, 0);
+  aplicarRetenciones(L, e, P, { haberes: habSinIndem, gravado: gravado, legales: a.jub + a.fonasa + a.frl + ir.irpf + irpfExtra, adelantos: nz(d.adelantos) }, alertas, true);
+  var pat = aportesPatronales(gravado, P);
+  var rec = cerrarRecibo(L, { gravado: r2(gravado), irpf: r2(ir.irpf + irpfExtra), aportes: r2(a.jub + a.fonasa + a.frl), patronal: pat, tasaFonasa: a.tasaFonasa, marginal: marg });
+  rec.alertas = alertas;
+  rec.egreso = { antiguedadAnios: ant.anios, antiguedadDias: ant.dias, licenciaDias: licDias, indemnizacion: r2(indem + extra), comun: r2(indem), especial: r2(extra), especialNombre: espDef ? espDef.nombre : "", motivo: d.motivo };
+  return rec;
+}
+
+var ENGINE = { PARAM_DEFAULT: PARAM_DEFAULT, LIC_ESP: LIC_ESP, RETS: RETS, DESPIDO_ESP: DESPIDO_ESP, aplicarRetenciones: aplicarRetenciones, liquidarMes: liquidarMes, liquidarAguinaldo: liquidarAguinaldo, liquidarEgreso: liquidarEgreso, irpfFranjas: irpfFranjas, calcIrpf: calcIrpf, fonasaTasa: fonasaTasa, antiguedad: antiguedad, diasLicencia: diasLicencia, jornalDe: jornalDe, valorHora: valorHora, jornalLiquido: jornalLiquido, semestreDe: semestreDe, r2: r2 };
+if (typeof module !== "undefined") module.exports = ENGINE;
+
+// Empresa de ejemplo (datos inventados) para probar Recibo Claro. Solo se carga cuando la persona lo pide.
+var DEMO = {
+  build: function (E, periodoActual) {
+    var P = {}; for (var k in E.PARAM_DEFAULT) P[k] = E.PARAM_DEFAULT[k];
+    var empresa = { nombre: "Ferretería El Tornillo S.A. (ejemplo)", rut: "21 555123 0019", bps: "4.512.330", mtss: "1.204.877", rubro: "Comercio minorista", direccion: "Av. 8 de Octubre 3456, Montevideo" };
+    // categorías con laudos INVENTADOS para el ejemplo (los reales salen del decreto del Consejo de Salarios de cada grupo)
+    var laudos = { items: [
+      { id: "c1", grupo: "10 · Comercio (ejemplo)", nombre: "Gerente", mensual: 90000, jornal: "" },
+      { id: "c2", grupo: "10 · Comercio (ejemplo)", nombre: "Encargado de local", mensual: 55000, jornal: "" },
+      { id: "c3", grupo: "10 · Comercio (ejemplo)", nombre: "Administrativo", mensual: 40000, jornal: "" },
+      { id: "c4", grupo: "10 · Comercio (ejemplo)", nombre: "Vendedor", mensual: 36000, jornal: "" },
+      { id: "c5", grupo: "10 · Comercio (ejemplo)", nombre: "Cajero", mensual: 30000, jornal: "" },
+      { id: "c6", grupo: "10 · Comercio (ejemplo)", nombre: "Peón de depósito", mensual: "", jornal: 1450 }
+    ] };
+    var lista = [
+      { id: "e01", nombre: "Andrés Castro", ci: "3.456.789-1", cargo: "Gerente", sector: "Dirección", tipo: "mensual", sueldo: 145000, horasSemanales: 44, ingreso: "2012-06-01", conyuge: false, hijosFonasa: true, hijosIrpf: 2, categoria: "c1", email: "andres.castro@ejemplo.com.uy", pensionTipo: "pctLiquido", pensionValor: 15, pensionBenef: "sus hijos" },
+      { id: "e02", nombre: "Lucía Fernández", ci: "4.123.456-7", cargo: "Encargada de local", sector: "Ventas", tipo: "mensual", sueldo: 68000, horasSemanales: 44, ingreso: "2017-03-01", conyuge: false, hijosFonasa: true, hijosIrpf: 1, categoria: "c2", email: "lucia.fernandez@ejemplo.com.uy" },
+      { id: "e03", nombre: "Sofía Pereira", ci: "4.789.012-3", cargo: "Administrativa", sector: "Administración", tipo: "mensual", sueldo: 52000, horasSemanales: 44, ingreso: "2019-02-04", conyuge: true, hijosFonasa: true, hijosIrpf: 2, categoria: "c3", email: "sofia.pereira@ejemplo.com.uy", fondoCat: 2 },
+      { id: "e04", nombre: "Martín Rodríguez", ci: "5.234.567-8", cargo: "Vendedor", sector: "Ventas", tipo: "mensual", sueldo: 42000, horasSemanales: 44, ingreso: "2021-08-16", conyuge: false, hijosFonasa: false, hijosIrpf: 0, categoria: "c4", email: "martin.rodriguez@ejemplo.com.uy", retSindicalPct: 1 },
+      { id: "e05", nombre: "Camila Núñez", ci: "5.678.901-2", cargo: "Vendedora", sector: "Ventas", tipo: "mensual", sueldo: 38000, horasSemanales: 44, ingreso: "2024-09-09", conyuge: false, hijosFonasa: false, hijosIrpf: 0, categoria: "c4", email: "camila.nunez@ejemplo.com.uy", retPrestamo: 3500 },
+      { id: "e06", nombre: "Valentina Gómez", ci: "6.012.345-6", cargo: "Cajera", sector: "Ventas", tipo: "mensual", sueldo: 25000, horasSemanales: 44, ingreso: "2025-11-03", conyuge: false, hijosFonasa: false, hijosIrpf: 0, categoria: "c5" },
+      { id: "e07", nombre: "Diego Silva", ci: "4.901.234-5", cargo: "Depósito", sector: "Logística", tipo: "jornalero", jornal: 1700, horasSemanales: 48, ingreso: "2023-05-02", conyuge: true, hijosFonasa: true, hijosIrpf: 1, categoria: "c6", retSindicalPct: 1 }
+    ];
+    var empleados = {}; lista.forEach(function (e) { empleados[e.id] = e; });
+    function prev(p, n) { var y = +p.slice(0, 4), m = +p.slice(5, 7) - n; while (m < 1) { m += 12; y--; } return y + "-" + String(m).padStart(2, "0"); }
+    // novedades de los últimos meses (cerrados) y del mes actual (abierto)
+    var patrones = [
+      { e04: { comisiones: 15500, hExtra: 4 }, e02: { hExtra: 6 }, e07: { diasTrabajados: 24 }, e05: { faltas: 1 } },
+      { e04: { comisiones: 21000 }, e02: { hExtra: 3, feriados: 1 }, e07: { diasTrabajados: 25, hExtra: 8 }, e03: { licencia: 10 } },
+      { e04: { comisiones: 17200, hExtra: 2 }, e07: { diasTrabajados: 22 }, e06: { faltas: 2 }, e01: { otrosGravados: 12000, otrosGravadosDetalle: "Bono por inventario" } },
+      { e04: { comisiones: 19800 }, e02: { hExtra: 5 }, e07: { diasTrabajados: 25, hNoct: 12 }, e05: { adelantos: 5000 } }
+    ];
+    var novedades = {}, liqs = {};
+    for (var i = 4; i >= 1; i--) {
+      var per = prev(periodoActual, i), items = patrones[4 - i];
+      novedades[per] = { periodo: per, items: items };
+      var cerrada = per + "-28T18:00:00.000Z";
+      liqs[per + "-mensual"] = {
+        id: per + "-mensual", periodo: per, tipo: "mensual", estado: "cerrada", cerrada: cerrada,
+        recibos: lista.filter(function (e) { return e.ingreso.slice(0, 7) <= per; }).map(function (e) {
+          var r = E.liquidarMes(e, items[e.id] || {}, P);
+          var cat = laudos.items.filter(function (c) { return c.id === e.categoria; })[0];
+          return { empleado: { id: e.id, nombre: e.nombre, ci: e.ci, cargo: e.cargo, sector: e.sector, tipo: e.tipo, sueldo: e.sueldo, jornal: e.jornal, ingreso: e.ingreso, horasSemanales: e.horasSemanales, email: e.email || "", categoria: cat ? "Grupo " + cat.grupo + " · " + cat.nombre : "" }, periodo: per, tipo: "mensual", lineas: r.lineas, totales: r.totales, notas: r.notas, alertas: r.alertas, novedades: items[e.id] || {}, emitido: cerrada };
+        })
+      };
+    }
+    novedades[periodoActual] = { periodo: periodoActual, items: { e04: { comisiones: 18400, hExtra: 6, alimentacion: 2500 }, e07: { diasTrabajados: 21, licDuelo: 2 }, e02: { hExtra: 4, alimentacion: 2500 }, e03: { licEstudio: 2, alimentacion: 2500 }, e05: { certificacion: 4, alimentacion: 2500 }, e06: { alimentacion: 2500 } } };
+    return { empresa: empresa, params: P, laudos: laudos, empleados: empleados, novedades: novedades, liqs: liqs };
+  }
+};
+if (typeof module !== "undefined") module.exports = DEMO;
+
+(function () {
+  "use strict";
+  var E = ENGINE, P0 = E.PARAM_DEFAULT;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var nz = function (n) { n = Number(n); return isFinite(n) ? n : 0; };
+  var clean = function (n) { n = nz(n); return Math.abs(n) < 0.005 ? 0 : n; };
+  var money = function (n) { return "$ " + clean(n).toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var money0 = function (n) { var v = Math.round(clean(n)); return "$ " + (v === 0 ? 0 : v).toLocaleString("es-UY"); };
+  var MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "setiembre", "octubre", "noviembre", "diciembre"];
+  function perLabel(p) { var m = +p.slice(5, 7); return MESES[m - 1].charAt(0).toUpperCase() + MESES[m - 1].slice(1) + " " + p.slice(0, 4); }
+  function perPrev(p) { var y = +p.slice(0, 4), m = +p.slice(5, 7) - 1; if (m < 1) { m = 12; y--; } return y + "-" + String(m).padStart(2, "0"); }
+  function hoyISO() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function fechaUY(iso) { if (!iso) return ""; var p = iso.split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
+  function uid() { return "e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  // ---------- estado ----------
+  var S = {
+    empresa: null, params: null, laudos: null, empleados: {}, novedades: {}, liqs: {},
+    loaded: false, view: "panel", periodo: hoyISO().slice(0, 7),
+    ui: { emp: null, rec: null, explain: {}, review: null, novAI: null, egreso: null, confirm: null, agSem: null, novTab: "sueldo", mail: null, laudosDraft: null }
+  };
+  function P() { var p = {}; var src = S.params || {}; for (var k in P0) p[k] = src[k] != null ? src[k] : P0[k]; return p; }
+  function activos(per) {
+    per = per || S.periodo;
+    return Object.keys(S.empleados).map(function (k) { return S.empleados[k]; })
+      .filter(function (e) { return e.ingreso && e.ingreso.slice(0, 7) <= per && (!e.egreso || e.egreso.slice(0, 7) >= per); })
+      .sort(function (a, b) { return a.nombre.localeCompare(b.nombre); });
+  }
+  function todos() { return Object.keys(S.empleados).map(function (k) { return S.empleados[k]; }).sort(function (a, b) { return (a.egreso ? 1 : 0) - (b.egreso ? 1 : 0) || a.nombre.localeCompare(b.nombre); }); }
+  function liqId(per, tipo) { return per + "-" + tipo; }
+  function liqDe(per, tipo) { return S.liqs[liqId(per, tipo || "mensual")] || null; }
+
+  // ---------- almacenamiento: base de datos de Claude o este navegador ----------
+  var hasClaude = !!(window.claude && typeof window.claude.use === "function");
+  var DB = null, LS_KEY = "reciboclaro_v1";
+  var store = {
+    put: function (col, id, doc) {
+      if (col === "config") { if (id === "empresa") S.empresa = doc; else if (id === "laudos") S.laudos = doc; else S.params = doc; }
+      else if (col === "empleados") S.empleados[id] = doc;
+      else if (col === "novedades") S.novedades[id] = doc;
+      else if (col === "liquidaciones") S.liqs[id] = doc;
+      if (DB) return queueWrite(col + "/" + id, doc);
+      saveLocal(); return Promise.resolve();
+    },
+    del: function (col, id) {
+      if (col === "empleados") delete S.empleados[id];
+      else if (col === "novedades") delete S.novedades[id];
+      else if (col === "liquidaciones") delete S.liqs[id];
+      if (DB) return DB.doc(col + "/" + id).delete();
+      saveLocal(); return Promise.resolve();
+    }
+  };
+  // una escritura a la vez por documento; las ráfagas se juntan en una
+  var pending = {}, writing = {};
+  function queueWrite(path, doc) {
+    pending[path] = JSON.parse(JSON.stringify(doc));
+    if (writing[path]) return writing[path];
+    var p = new Promise(function (res) { setTimeout(res, 350); }).then(function loop() {
+      var d = pending[path]; delete pending[path];
+      return DB.doc(path).set(d).catch(function () { toast("No se pudo guardar. Revisá la conexión."); }).then(function () { if (pending[path]) return loop(); });
+    }).then(function () { delete writing[path]; });
+    writing[path] = p; return p;
+  }
+  function saveLocal() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ empresa: S.empresa, params: S.params, laudos: S.laudos, empleados: S.empleados, novedades: S.novedades, liqs: S.liqs })); } catch (e) { toast("Este navegador no deja guardar los datos."); }
+  }
+  function loadLocal() {
+    try { var d = JSON.parse(localStorage.getItem(LS_KEY) || "null"); if (d) { S.empresa = d.empresa; S.params = d.params; S.laudos = d.laudos || null; S.empleados = d.empleados || {}; S.novedades = d.novedades || {}; S.liqs = d.liqs || {}; } } catch (e) {}
+    S.loaded = true;
+  }
+  function startStore() {
+    if (!hasClaude) { loadLocal(); render(); return; }
+    window.claude.use("db").then(function (db) {
+      if (!db) { loadLocal(); render(); return; }
+      DB = db;
+      var cols = ["config", "empleados", "novedades", "liquidaciones"], got = {};
+      cols.forEach(function (c) {
+        db.collection(c).onSnapshot(function (snap) {
+          var m = {};
+          snap.docs.forEach(function (d) { m[d.id] = d.data(); });
+          if (c === "config") { S.empresa = m.empresa || null; S.params = m.parametros || null; S.laudos = m.laudos || null; }
+          else if (c === "empleados") S.empleados = m;
+          else if (c === "novedades") S.novedades = m;
+          else S.liqs = m;
+          got[c] = 1;
+          if (Object.keys(got).length === cols.length) S.loaded = true;
+          var ae = document.activeElement;
+          if (S.loaded && !(ae && ae.closest && ae.closest(".nov,.form,.ai-box,.lau"))) render();
+        }, function () { if (!S.loaded) { S.loaded = true; render(); } toast("No se pudo leer la base de datos. Recargá la página."); });
+      });
+    }, function () { loadLocal(); render(); });
+    // si la base de datos no responde, se muestra igual la página
+    setTimeout(function () { if (!S.loaded) { S.loaded = true; render(); } }, 8000);
+  }
+
+  // ---------- IA: Claude dentro de Claude, servidor (Gemini) en Render ----------
+  var AI = null, aiReady = false;
+  function leerJSON(t) {
+    t = String(t || "").replace(/```(?:json)?/gi, "");
+    var a = t.search(/[\[{]/), b = Math.max(t.lastIndexOf("}"), t.lastIndexOf("]"));
+    if (a < 0 || b < a) return undefined;
+    try { return JSON.parse(t.slice(a, b + 1)); } catch (e) { return undefined; }
+  }
+  function serverAI() {
+    var ask = function (input, signal) {
+      return fetch("api/ia", { method: "POST", signal: signal, headers: { "content-type": "application/json" }, body: JSON.stringify({ input: input }) })
+        .then(function (r) {
+          if (r.status === 429) return r.json().catch(function () { return {}; }).then(function (j) { throw { code: "rate_limited", server: j.error }; });
+          if (!r.ok) throw { code: "upstream_error" };
+          return r.json();
+        }).then(function (j) { var v = leerJSON(j.text); if (v === undefined) throw { code: "invalid_json" }; return v; });
+    };
+    return { json: function (input, o) { return ask(input + "\n\nRespondé solo con el JSON.", o && o.signal).catch(function (e) { if (e.code === "invalid_json") return ask(input + "\n\nRespondé solo con el JSON.", o && o.signal); throw e; }); } };
+  }
+  function startAI() {
+    var done = function (ai, txt) { AI = ai; aiReady = true; $("aiDot").className = "dot " + (ai ? "on" : "off"); $("aiTxt").textContent = txt; render(); };
+    if (hasClaude) {
+      window.claude.use("sample").then(function (s) { done(s ? { json: function (i, o) { return s.json(i, { modelTier: "default", signal: o && o.signal }); } } : null, s ? "IA lista (Claude)" : "IA no disponible"); });
+    } else if (location.protocol.indexOf("http") === 0) {
+      fetch("api/estado", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (j) { done(j && j.ia ? serverAI() : null, j && j.ia ? "IA lista (Gemini)" : (j ? "Falta la clave de la IA en el servidor" : "IA no disponible")); });
+    } else done(null, "IA no disponible (archivo local)");
+  }
+  function aiError(e) {
+    var c = e && e.code;
+    if (c === "rate_limited") return e.server === "limite_persona" || e.server === "limite_diario" ? "Se llegó al límite de consultas a la IA de hoy." : "La IA está saturada. Probá en un minuto.";
+    if (c === "not_granted") return "No se dio permiso para usar la IA. Volvé a intentar y aceptá el permiso.";
+    if (c === "invalid_json") return "La IA respondió algo que no se pudo leer. Probá de nuevo.";
+    return "No se pudo hablar con la IA. Probá de nuevo.";
+  }
+
+  // ---------- cálculo ----------
+  function novDe(per, id) { var n = S.novedades[per]; return (n && n.items && n.items[id]) || {}; }
+  function calcMes(per) {
+    var closed = liqDe(per, "mensual");
+    if (closed && closed.estado === "cerrada") return closed.recibos;
+    var p = P();
+    return activos(per).map(function (e) {
+      var n = novDe(per, e.id), ctx = {};
+      if (nz(n.certificacion) > 0 || nz(n.paroDias) > 0) ctx.promedio = promedioMeses(per, e);
+      if (+per.slice(5, 7) === 12 && p.ajusteAnual) ctx.anual = datosAnio(per, e);
+      var r = E.liquidarMes(e, n, p, ctx);
+      return { empleado: snapEmp(e), periodo: per, tipo: "mensual", lineas: r.lineas, totales: r.totales, notas: r.notas, alertas: r.alertas, ajusteIrpf: r.ajusteIrpf, novedades: n };
+    });
+  }
+  // recibo mensual de un empleado: el emitido si el mes está cerrado, si no una estimación con las novedades cargadas
+  function recMes(per, e) {
+    var l = liqDe(per, "mensual");
+    if (l && l.estado === "cerrada") return l.recibos.filter(function (x) { return x.empleado.id === e.id; })[0] || null;
+    if (e.ingreso.slice(0, 7) > per || (e.egreso && e.egreso.slice(0, 7) < per)) return null;
+    var r = E.liquidarMes(e, novDe(per, e.id), P()); r.estimado = true; return r;
+  }
+  // nominal promedio de los últimos 6 meses cerrados (para estimar subsidios del BPS)
+  function promedioMeses(per, e) {
+    var v = [], m = per;
+    for (var i = 0; i < 6; i++) { m = perPrev(m); var l = liqDe(m, "mensual"); if (l && l.estado === "cerrada") { var x = l.recibos.filter(function (q) { return q.empleado.id === e.id; })[0]; if (x) v.push(x.totales.gravado); } }
+    return v.length ? v.reduce(function (s, x) { return s + x; }, 0) / v.length : 0;
+  }
+  // datos de enero a noviembre para el ajuste anual de IRPF de diciembre
+  function datosAnio(per, e) {
+    var y = per.slice(0, 4), A = { rentas: 0, deducciones: 0, extras: 0, retenido: 0, meses: 0 };
+    for (var m = 1; m <= 11; m++) {
+      var r = recMes(y + "-" + String(m).padStart(2, "0"), e); if (!r) continue;
+      var t = r.totales, sv = t.sv != null ? t.sv : r.lineas.filter(function (l) { return l.concepto === "Salario vacacional"; }).reduce(function (s, l) { return s + l.monto; }, 0);
+      A.rentas += t.rentaIrpf != null ? t.rentaIrpf : t.gravado;
+      A.deducciones += t.dedAportes != null ? t.dedAportes : t.aportes;
+      A.extras += sv; A.retenido += nz(t.irpf); A.meses++;
+    }
+    [y + "-06", y + "-12"].forEach(function (ap) {
+      var ag = calcAguinaldo(ap).filter(function (x) { return x.empleado.id === e.id; })[0];
+      if (ag) { A.extras += nz(ag.totales.gravado); A.deducciones += nz(ag.totales.aportes); A.retenido += nz(ag.totales.irpf); }
+    });
+    return A;
+  }
+  function snapEmp(e) { var c = catDe(e); return { id: e.id, nombre: e.nombre, ci: e.ci, cargo: e.cargo, sector: e.sector, tipo: e.tipo, sueldo: e.sueldo, jornal: e.jornal, ingreso: e.ingreso, horasSemanales: e.horasSemanales, email: e.email || "", categoria: c ? catNombre(c) : "" }; }
+  function laudos() { return (S.laudos && S.laudos.items) || []; }
+  function catDe(e) { return e && e.categoria ? laudos().filter(function (c) { return c.id === e.categoria; })[0] || null : null; }
+  function catNombre(c) { return (c.grupo ? "Grupo " + c.grupo + " · " : "") + (c.nombre || "Categoría"); }
+  function sumNovAnio(per, id, campo) { var y = per.slice(0, 4), t = 0; Object.keys(S.novedades).forEach(function (k) { if (k.slice(0, 4) === y && k <= per) t += nz(novDe(k, id)[campo]); }); return t; }
+  function sumT(recs, k) { return recs.reduce(function (s, r) { return s + nz(r.totales[k]); }, 0); }
+  function gravadoMes(per, e) {
+    var l = liqDe(per, "mensual");
+    if (l && l.estado === "cerrada") { var r = l.recibos.filter(function (x) { return x.empleado.id === e.id; })[0]; if (r) return { gravado: r.totales.gravado, estimado: false }; return null; }
+    if (e.ingreso.slice(0, 7) > per || (e.egreso && e.egreso.slice(0, 7) < per)) return null;
+    return { gravado: E.liquidarMes(e, novDe(per, e.id), P()).totales.gravado, estimado: true };
+  }
+
+  // revisiones automáticas (sin IA)
+  function revisar(per, recs) {
+    var out = [], p = P(), prev = liqDe(perPrev(per), "mensual");
+    recs.forEach(function (r) {
+      var e = S.empleados[r.empleado.id] || r.empleado, n = r.novedades || {}, nm = r.empleado.nombre;
+      var hs = nz(e.horasSemanales) || 48;
+      if (e.tipo !== "jornalero" && hs >= 44 && nz(e.sueldo) < p.smn) out.push({ nivel: "alta", empleado: nm, texto: "El sueldo de " + money(e.sueldo) + " está por debajo del salario mínimo nacional (" + money(p.smn) + ")." });
+      var ext = nz(n.hExtra) + nz(n.hExtraDescanso);
+      if (ext > 34) out.push({ nivel: "media", empleado: nm, texto: ext + " horas extra en el mes superan el máximo legal de 8 por semana (unas 34 por mes)." });
+      if (r.totales.liquido < 0) out.push({ nivel: "alta", empleado: nm, texto: "El líquido da negativo: los descuentos superan lo que cobra." });
+      else if (nz(n.adelantos) + nz(n.otrosDescuentos) > r.totales.haberes * 0.5) out.push({ nivel: "media", empleado: nm, texto: "Los adelantos y otros descuentos superan la mitad de lo que cobra." });
+      if (nz(n.licencia) > E.diasLicencia(E.antiguedad(e.ingreso, per + "-28").anios)) out.push({ nivel: "baja", empleado: nm, texto: "Toma más días de licencia (" + n.licencia + ") que los que le corresponden en un año." });
+      if (e.tipo === "jornalero" && (n.diasTrabajados == null || n.diasTrabajados === "")) out.push({ nivel: "baja", empleado: nm, texto: "No se cargaron los días trabajados; se calculó con 25." });
+      if (!e.ci) out.push({ nivel: "baja", empleado: nm, texto: "Falta la cédula en la ficha; el recibo la necesita." });
+      (r.alertas || []).forEach(function (a) { out.push({ nivel: a.nivel, empleado: nm, texto: a.texto }); });
+      // laudo del Consejo de Salarios
+      var cat = catDe(e);
+      if (cat) {
+        if (e.tipo === "jornalero" ? nz(cat.jornal) > 0 && nz(e.jornal) < nz(cat.jornal) : nz(cat.mensual) > 0 && nz(e.sueldo) < nz(cat.mensual))
+          out.push({ nivel: "alta", empleado: nm, texto: "Cobra menos que el laudo de su categoría (" + catNombre(cat) + "): " + (e.tipo === "jornalero" ? money(e.jornal) + " por día contra " + money(cat.jornal) : money(e.sueldo) + " contra " + money(cat.mensual)) + "." });
+      }
+      // licencias especiales: topes legales
+      var ant = E.antiguedad(e.ingreso, per + "-28"), hsE = nz(e.horasSemanales) || 48;
+      if (nz(n.licEstudio) > 0) {
+        var topeEst = hsE <= 36 ? 6 : hsE < 48 ? 9 : 12, usadoEst = sumNovAnio(per, r.empleado.id, "licEstudio");
+        if (ant.dias < 183) out.push({ nivel: "media", empleado: nm, texto: "Licencia por estudio con menos de 6 meses de antigüedad: todavía no le corresponde." });
+        else if (usadoEst > topeEst) out.push({ nivel: "media", empleado: nm, texto: "Lleva " + usadoEst + " días de licencia por estudio en el año; con " + hsE + " horas semanales le corresponden " + topeEst + "." });
+      }
+      [["licPaternidad", 3, "paternidad (los 3 días a cargo de la empresa; después sigue el subsidio del BPS)"], ["licMatrimonio", 3, "matrimonio"], ["licDuelo", 3, "duelo"]].forEach(function (c) {
+        if (nz(n[c[0]]) > c[1]) out.push({ nivel: "baja", empleado: nm, texto: n[c[0]] + " días de licencia por " + c[2] + ": la ley da " + c[1] + "." });
+      });
+      if (nz(n.licDiscapacidad) > 0 && sumNovAnio(per, r.empleado.id, "licDiscapacidad") > 10) out.push({ nivel: "baja", empleado: nm, texto: "Supera los 10 días al año de licencia por hijo con discapacidad." });
+      if (nz(n.hFamiliar) > 0 && sumNovAnio(per, r.empleado.id, "hFamiliar") > 64) out.push({ nivel: "baja", empleado: nm, texto: "Supera las 64 horas pagas al año por familiar con discapacidad o enfermedad terminal (de 96 en total, 32 sin goce)." });
+      if (nz(n.accidente) > 0) out.push({ nivel: "baja", empleado: nm, texto: "Tiene días por accidente de trabajo: confirmá que se hizo la denuncia al BSE." });
+      if (prev && prev.estado === "cerrada") {
+        var pr = prev.recibos.filter(function (x) { return x.empleado.id === r.empleado.id; })[0];
+        if (pr && pr.totales.gravado > 0) { var d = (r.totales.gravado - pr.totales.gravado) / pr.totales.gravado; if (Math.abs(d) > 0.3) out.push({ nivel: "media", empleado: nm, texto: "El nominal cambió " + Math.round(d * 100) + "% contra " + perLabel(prev.periodo) + " (" + money0(pr.totales.gravado) + " → " + money0(r.totales.gravado) + ")." }); }
+      }
+    });
+    return out;
+  }
+
+  // ---------- render ----------
+  var VIEWS = {};
+  function render() {
+    var nav = document.querySelectorAll("#nav a");
+    for (var i = 0; i < nav.length; i++) nav[i].setAttribute("aria-current", nav[i].dataset.v === S.view ? "page" : "false");
+    var em = S.empresa;
+    $("company").innerHTML = em ? "<b>" + esc(em.nombre) + "</b>RUT " + esc(em.rut || "—") + (em.pais && em.pais !== "UY" ? " · " + esc(em.pais) : "") : "";
+    if (!S.loaded) return;
+    if (!em && S.view !== "parametros" && S.view !== "locacion") { $("main").innerHTML = viewInicio(); return; }
+    var y = window.scrollY;
+    var html = (VIEWS[S.view] || VIEWS.panel)();
+    var pa = paisEmpresa();
+    if (pa !== "UY" && ["panel", "novedades", "liquidacion", "recibos", "aguinaldo", "egresos"].indexOf(S.view) >= 0) {
+      var nomP = PAISES().filter(function (x) { return x.id === pa; })[0].nombre;
+      var i = html.indexOf('<div class="stack">');
+      var aviso = '<div class="msg" style="margin-bottom:14px">Empresa en <b>' + nomP + '</b>: por ahora los cálculos usan las reglas de Uruguay. <a href="#locacion">Ver las reglas de ' + nomP + '</a>.</div>';
+      html = i >= 0 ? html.slice(0, i) + aviso + html.slice(i) : aviso + html;
+    }
+    $("main").innerHTML = html;
+    if (S.keepScroll) window.scrollTo(0, y);
+    S.keepScroll = false;
+  }
+  function topbar(title, sub, right) {
+    return '<div class="topbar"><div><h1>' + title + '</h1>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div><div class="btns">' + (right || "") + '</div></div>';
+  }
+  function periodPicker() {
+    var l = liqDe(S.periodo, "mensual"), cerrada = l && l.estado === "cerrada";
+    return '<label class="period" for="per">Mes <input type="month" id="per" value="' + S.periodo + '"></label>' +
+      '<span class="pill ' + (cerrada ? "ok" : "warn") + '">' + (cerrada ? "Liquidación cerrada" : "En preparación") + '</span>';
+  }
+  function viewInicio() {
+    return topbar("Bienvenido a Recibo Claro", "Liquidación de sueldos y recibos para empresas uruguayas") +
+      '<div class="card"><div class="card-b stack"><p>Todavía no hay una empresa cargada. Podés empezar con una empresa de ejemplo (7 empleados, con meses ya liquidados) para ver cómo funciona, o cargar la tuya desde cero.</p>' +
+      '<div class="btns"><button class="btn pri" data-act="demo">Cargar empresa de ejemplo</button><a class="btn" href="#parametros">Cargar mi empresa</a></div>' +
+      '<p class="note">Los datos de ejemplo son inventados. ' + (DB ? "Se guardan en la base de datos de esta página." : "Se guardan en este navegador; podés bajar un respaldo desde Empresa y parámetros.") + '</p></div></div>';
+  }
+
+  // Panel
+  VIEWS.panel = function () {
+    var recs = calcMes(S.periodo), p = P();
+    var nom = sumT(recs, "gravado"), liq = sumT(recs, "liquido"), cost = sumT(recs, "costo"), irpf = sumT(recs, "irpf");
+    var bps = sumT(recs, "aportes") - 0 + recs.reduce(function (s, r) { var d = r.totales.patronalDetalle || {}; return s + nz(d.jub) + nz(d.fonasa) + nz(d.frl) + nz(d.fgcl); }, 0);
+    var l = liqDe(S.periodo, "mensual"), cerrada = l && l.estado === "cerrada";
+    var nov = S.novedades[S.periodo], cargadas = nov && nov.items ? Object.keys(nov.items).filter(function (k) { return Object.keys(nov.items[k]).some(function (f) { return nov.items[k][f] !== "" && nov.items[k][f] != null; }); }).length : 0;
+    var checks = revisar(S.periodo, recs);
+    var max = Math.max.apply(null, recs.map(function (r) { return r.totales.costo; }).concat([1]));
+    var m = +S.periodo.slice(5, 7), agMes = m <= 6 ? 6 : 12;
+    var pasos = [
+      ["Empleados", activos().length + " activos", "#empleados", true],
+      ["Novedades de " + perLabel(S.periodo).toLowerCase(), cargadas ? cargadas + " con novedades" : "sin novedades cargadas", "#novedades", cargadas > 0 || cerrada],
+      ["Liquidación", cerrada ? "cerrada el " + fechaUY((l.cerrada || "").slice(0, 10)) : "abierta: revisala y cerrala", "#liquidacion", cerrada],
+      ["Recibos", cerrada ? recs.length + " emitidos" : "se emiten al cerrar", "#recibos", cerrada]
+    ];
+    return topbar("Panel", perLabel(S.periodo) + " · " + esc(S.empresa.nombre), periodPicker()) +
+      '<div class="stack">' +
+      '<div class="grid-kpi">' +
+      '<div class="kpi main"><span>Líquido a pagar</span><b>' + money0(liq) + '</b><em>' + recs.length + ' recibos</em></div>' +
+      '<div class="kpi"><span>Nominal gravado</span><b>' + money0(nom) + '</b><em>base de aportes</em></div>' +
+      '<div class="kpi"><span>A pagar a BPS</span><b>' + money0(bps) + '</b><em>aportes personales y patronales</em></div>' +
+      '<div class="kpi"><span>Costo total para la empresa</span><b>' + money0(cost) + '</b><em>IRPF retenido ' + money0(irpf) + '</em></div>' +
+      '</div>' +
+      '<div class="two">' +
+      '<div class="card"><div class="card-h"><div><h2>Costo por empleado</h2><p>Qué parte cobra, qué parte se descuenta y qué paga la empresa encima</p></div></div><div class="card-b stack">' +
+      '<div class="bars">' + recs.slice().sort(function (a, b) { return b.totales.costo - a.totales.costo; }).map(function (r) {
+        var t = r.totales, w = function (v) { return Math.max(0, v / max * 100).toFixed(2) + "%"; };
+        return '<div class="bar-row"><span class="nm">' + esc(r.empleado.nombre) + '</span><div class="bar" title="Líquido ' + money0(t.liquido) + ' · descuentos ' + money0(t.descuentos) + ' · patronal ' + money0(t.patronal) + '"><i class="l" style="width:' + w(t.liquido) + '"></i><i class="d" style="width:' + w(t.descuentos) + '"></i><i class="p" style="width:' + w(t.patronal) + '"></i></div><span class="num">' + money0(t.costo) + '</span></div>';
+      }).join("") + '</div>' +
+      '<div class="legend"><span style="--c:var(--money)">Líquido</span><span style="--c:var(--warn)">Aportes, IRPF y descuentos</span><span style="--c:var(--accent)">Aportes patronales</span></div>' +
+      '</div></div>' +
+      '<div class="stack">' +
+      '<div class="card"><div class="card-h"><h2>Pasos de ' + perLabel(S.periodo).toLowerCase() + '</h2></div><div class="card-b"><ul class="obs">' + pasos.map(function (s) {
+        return '<li><span class="pill ' + (s[3] ? "ok" : "warn") + '">' + (s[3] ? "Listo" : "Pendiente") + '</span><span><a href="' + s[2] + '">' + s[0] + '</a></span><small>' + s[1] + '</small></li>';
+      }).join("") + '</ul></div></div>' +
+      '<div class="card"><div class="card-h"><h2>Controles</h2><span class="pill ' + (checks.length ? "warn" : "ok") + '">' + (checks.length ? checks.length + " para revisar" : "Sin alertas") + '</span></div><div class="card-b">' +
+      (checks.length ? '<ul class="obs">' + checks.slice(0, 5).map(obsItem).join("") + '</ul>' + (checks.length > 5 ? '<p class="note" style="margin-top:8px"><a href="#liquidacion">Ver todos en Liquidación</a></p>' : '') : '<p class="note">No hay sueldos bajo el mínimo, líquidos negativos ni cambios bruscos.</p>') +
+      '</div></div>' +
+      '<div class="card"><div class="card-b"><p class="note">Próximo aguinaldo: <b>' + (agMes === 6 ? "junio" : "diciembre") + " " + S.periodo.slice(0, 4) + '</b>. <a href="#aguinaldo">Ver la proyección</a>.</p></div></div>' +
+      '</div></div></div>';
+  };
+  function obsItem(o) {
+    var c = o.nivel === "alta" ? "bad" : o.nivel === "media" ? "warn" : "acc";
+    return '<li><span class="pill ' + c + '">' + (o.nivel === "alta" ? "Alta" : o.nivel === "media" ? "Media" : "Baja") + '</span><span><b>' + esc(o.empleado || "General") + '</b> · ' + esc(o.texto) + '</span>' + (o.sugerencia ? '<small>' + esc(o.sugerencia) + '</small>' : '') + '</li>';
+  }
+
+  // Empleados
+  // [campo, etiqueta, tipo, clase, opciones o ayuda]
+  var CAMPOS_EMP = [
+    ["", "Datos personales", "sec"],
+    ["nombre", "Nombre completo", "text", "w2"], ["ci", "Cédula", "text"], ["email", "Mail (para mandarle el recibo)", "email", "w2"], ["cargo", "Cargo", "text"], ["sector", "Sector", "text"],
+    ["ingreso", "Fecha de ingreso", "date"],
+    ["", "Sueldo y categoría", "sec"],
+    ["tipo", "Forma de pago", "select", "", [["mensual", "Mensual"], ["jornalero", "Jornalero"]]], ["sueldo", "Sueldo mensual nominal ($)", "number"], ["jornal", "Jornal nominal ($)", "number"],
+    ["horasSemanales", "Horas semanales", "number"], ["categoria", "Categoría del Consejo de Salarios", "cat", "w2"],
+    ["", "FONASA, IRPF y Fondo de Solidaridad", "sec"],
+    ["conyuge", "Cónyuge o concubino a cargo (FONASA)", "check"], ["hijosFonasa", "Hijos menores a cargo (FONASA)", "check"], ["hijosIrpf", "Hijos menores para deducir del IRPF", "number"],
+    ["discapacidadIrpf", "Personas con discapacidad a cargo (IRPF)", "number"], ["fondoCat", "Fondo de Solidaridad", "select", "w2", [["0", "No aporta por la empresa"], ["1", "Categoría 1"], ["2", "Categoría 2"], ["3", "Categoría 3"], ["4", "Categoría 4"], ["5", "Categoría 5"]]],
+    ["", "Pensión alimenticia (oficio judicial)", "sec"],
+    ["pensionTipo", "Cómo se calcula", "select", "", [["no", "No tiene"], ["pctLiquido", "% del líquido"], ["pctNominal", "% del nominal"], ["monto", "Monto fijo ($)"]]], ["pensionValor", "Porcentaje o monto", "number"], ["pensionBenef", "A favor de", "text"],
+    ["", "Retenciones autorizadas (Ley 17.829), en orden de prioridad", "sec"],
+    ["retAlquiler", "A · Garantía de alquiler ($)", "number"], ["retSindicalPct", "B · Cuota sindical (% del nominal)", "number"], ["retBrou", "C · Crédito social BROU ($)", "number"],
+    ["retVivienda", "D · Vivienda: BHU, ANV, MEVIR ($)", "number"], ["retSeguro", "E · Seguro de vida colectivo ($)", "number"], ["retMutual", "F · Cuota mutual ($)", "number"],
+    ["retPrestamo", "G · Préstamo o cooperativa ($)", "number"], ["retConvenio", "H · Convenio con DGI o BPS ($)", "number"]
+  ];
+  VIEWS.empleados = function () {
+    var lista = todos(), sel = S.ui.emp, p = P();
+    var hoy = hoyISO();
+    var form = "";
+    if (sel) {
+      var e = sel === "nuevo" ? { tipo: "mensual", horasSemanales: 44, ingreso: hoy } : S.empleados[sel];
+      if (e) form = '<div class="card" id="empForm"><div class="card-h"><div><h2>' + (sel === "nuevo" ? "Nuevo empleado" : esc(e.nombre)) + '</h2><p>Los datos de FONASA e IRPF cambian los descuentos del recibo</p></div><button class="btn sm" data-act="empClose">Cerrar</button></div><div class="card-b stack">' +
+        '<form class="form" id="fEmp" data-id="' + esc(sel) + '">' + CAMPOS_EMP.map(function (c) {
+          var v = e[c[0]], id = "emp_" + c[0];
+          if (c[2] === "sec") return '<div class="sec">' + c[1] + '</div>';
+          if (c[2] === "check") return '<div class="f"><label class="check"><input type="checkbox" id="' + id + '" name="' + c[0] + '"' + (v ? " checked" : "") + '> ' + c[1] + '</label></div>';
+          if (c[2] === "select") return '<div class="f ' + (c[3] || "") + '"><label for="' + id + '">' + c[1] + '</label><select id="' + id + '" name="' + c[0] + '">' + c[4].map(function (o) { return '<option value="' + o[0] + '"' + (String(v == null ? c[4][0][0] : v) === o[0] ? " selected" : "") + '>' + o[1] + '</option>'; }).join("") + '</select></div>';
+          if (c[2] === "cat") return '<div class="f ' + (c[3] || "") + '"><label for="' + id + '">' + c[1] + '</label><select id="' + id + '" name="categoria"><option value="">Sin categoría</option>' + laudos().map(function (x) { return '<option value="' + esc(x.id) + '"' + (x.id === v ? " selected" : "") + '>' + esc(catNombre(x)) + (nz(x.mensual) ? " · laudo " + money0(x.mensual) : "") + (nz(x.jornal) ? " · jornal " + money0(x.jornal) : "") + '</option>'; }).join("") + '</select>' + (laudos().length ? '' : '<small>Cargá las categorías en Empresa y parámetros.</small>') + '</div>';
+          return '<div class="f ' + (c[3] || "") + '"><label for="' + id + '">' + c[1] + '</label><input id="' + id + '" name="' + c[0] + '" type="' + c[2] + '"' + (c[2] === "number" ? ' step="any" min="0"' : '') + ' value="' + esc(v == null ? "" : v) + '"' + (c[0] === "nombre" || c[0] === "ingreso" ? " required" : "") + '></div>';
+        }).join("") + '<div class="f w3"><small>Mensual: se paga el sueldo del mes y el valor hora es sueldo ÷ 30 ÷ (horas semanales ÷ 6). Jornalero: se paga jornal × días trabajados. Pensión alimenticia: va primero y no se recorta. Las demás retenciones se aplican en el orden de la ley y se recortan si el trabajador cobraría menos del 35% de su líquido (30% con garantía de alquiler o préstamos).</small></div>' +
+        '<div class="f w3 btns"><button class="btn pri" type="submit">Guardar</button>' + (sel !== "nuevo" && !e.egreso ? '<a class="btn" href="#egresos" data-act="egresoDe" data-id="' + esc(sel) + '">Registrar egreso</a>' : '') + '</div></form></div></div>';
+    }
+    return topbar("Empleados", lista.length + " en la planilla", '<button class="btn pri" data-act="empNew">Nuevo empleado</button>') +
+      '<div class="stack">' + form +
+      '<div class="card"><div class="tbl-wrap"><table><thead><tr><th>Empleado</th><th>Forma de pago</th><th class="r">Sueldo / jornal</th><th>Ingreso</th><th class="r">Antigüedad</th><th class="r">Licencia anual</th><th>FONASA</th><th class="r">Hijos IRPF</th><th>Estado</th></tr></thead><tbody>' +
+      (lista.length ? lista.map(function (e) {
+        var a = E.antiguedad(e.ingreso, e.egreso || hoy);
+        var fon = E.fonasaTasa(e, e.tipo === "jornalero" ? nz(e.jornal) * 25 : nz(e.sueldo), p);
+        return '<tr class="click" data-act="empEdit" data-id="' + esc(e.id) + '"><td class="who"><b>' + esc(e.nombre) + '</b><span>' + esc(e.cargo || "") + (e.ci ? " · CI " + esc(e.ci) : "") + '</span></td><td>' + (e.tipo === "jornalero" ? "Jornalero" : "Mensual") + '</td><td class="r num">' + (e.tipo === "jornalero" ? money(e.jornal) + " /día" : money(e.sueldo)) + '</td><td class="num">' + fechaUY(e.ingreso) + '</td><td class="r num">' + a.anios + (a.anios === 1 ? " año" : " años") + '</td><td class="r num">' + E.diasLicencia(a.anios) + ' días</td><td class="num">' + String(fon).replace(".", ",") + '%</td><td class="r num">' + nz(e.hijosIrpf) + '</td><td>' + (e.egreso ? '<span class="pill">Egresó ' + fechaUY(e.egreso) + '</span>' : '<span class="pill ok">Activo</span>') + '</td></tr>';
+      }).join("") : '<tr><td colspan="9"><div class="empty"><b>Todavía no hay empleados</b>Tocá «Nuevo empleado» para cargar el primero.</div></td></tr>') +
+      '</tbody></table></div></div></div>';
+  };
+
+  // Novedades
+  // [campo, etiqueta, solo para (mensual|jornalero), pestaña]
+  var CAMPOS_NOV = [
+    ["faltas", "Faltas (días)", "mensual", "sueldo"], ["diasTrabajados", "Días trabajados", "jornalero", "sueldo"], ["hExtra", "Horas extra hábiles", "", "sueldo"], ["hExtraDescanso", "Horas extra en descanso o feriado", "", "sueldo"],
+    ["hNoct", "Horas nocturnas", "", "sueldo"], ["feriados", "Feriados pagos trabajados", "", "sueldo"], ["comisiones", "Comisiones ($)", "", "sueldo"],
+    ["otrosGravados", "Otros haberes ($)", "", "sueldo"], ["alimentacion", "Alimentación ($)", "", "sueldo"], ["noGravados", "No gravados ($)", "", "sueldo"], ["adelantos", "Adelantos ($)", "", "sueldo"], ["otrosDescuentos", "Otros descuentos ($)", "", "sueldo"],
+    ["licencia", "Licencia anual (días)", "", "ausencias"], ["certificacion", "Certificación médica (días)", "", "ausencias"], ["accidente", "Accidente de trabajo (días)", "", "ausencias"], ["paroDias", "Seguro de paro (días)", "", "ausencias"],
+    ["licEstudio", "Lic. estudio (días)", "", "ausencias"], ["licPaternidad", "Lic. paternidad (días)", "", "ausencias"], ["licMatrimonio", "Lic. matrimonio (días)", "", "ausencias"], ["licDuelo", "Lic. duelo (días)", "", "ausencias"],
+    ["licDiscapacidad", "Lic. hijo con discapacidad (días)", "", "ausencias"], ["licExamen", "Donación de sangre o PAP/mamografía (días)", "", "ausencias"], ["hFamiliar", "Familiar con discapacidad (horas)", "", "ausencias"]
+  ];
+  var NOV_TABS = [["sueldo", "Sueldo, horas y descuentos"], ["ausencias", "Ausencias y licencias"]];
+  VIEWS.novedades = function () {
+    var l = liqDe(S.periodo, "mensual"), cerrada = l && l.estado === "cerrada", emps = activos();
+    var ai = S.ui.novAI, tab = S.ui.novTab || "sueldo", campos = CAMPOS_NOV.filter(function (c) { return c[3] === tab; });
+    var aiBox = '<div class="ai-box no-print"><h3>Cargar novedades escribiendo</h3><p>Escribí como se lo dirías a un compañero. La IA lo pasa a la tabla y te muestra los cambios antes de aplicarlos.</p>' +
+      '<textarea id="novTxt" placeholder="Ej.: Martín hizo 6 horas extra y vendió 18.000 en comisiones. Valentina faltó el lunes y el martes. Camila se toma 10 días de licencia. Diego trabajó 22 días.">' + esc(ai && ai.texto || "") + '</textarea>' +
+      '<div class="btns"><button class="btn ai" data-act="novAI"' + (!AI || cerrada ? " disabled" : "") + '>Interpretar con IA</button>' + (ai && ai.loading ? '<span class="loading">La IA está leyendo el texto…</span>' : '') + (!AI && aiReady ? '<span class="note">La IA no está disponible en esta página.</span>' : '') + '</div>' +
+      (ai && ai.error ? '<div class="msg err">' + esc(ai.error) + '</div>' : '') +
+      (ai && ai.cambios ? (ai.cambios.length ? '<div class="card"><div class="tbl-wrap"><table><thead><tr><th>Empleado</th><th>Dato</th><th class="r">Antes</th><th class="r">Después</th><th>Por qué</th></tr></thead><tbody>' + ai.cambios.map(function (c) {
+        return '<tr><td>' + esc(c.nombre) + '</td><td>' + esc(c.label) + '</td><td class="r num">' + esc(c.antes === "" || c.antes == null ? "—" : c.antes) + '</td><td class="r num"><b>' + esc(c.valor) + '</b></td><td class="note">' + esc(c.explicacion || "") + '</td></tr>';
+      }).join("") + '</tbody></table></div></div><div class="btns"><button class="btn pri" data-act="novAIapply">Aplicar ' + ai.cambios.length + (ai.cambios.length === 1 ? " cambio" : " cambios") + '</button><button class="btn" data-act="novAIdiscard">Descartar</button></div>' : '<div class="msg">La IA no encontró novedades para cargar en ese texto.</div>') + (ai.dudas && ai.dudas.length ? '<div class="msg">No se entendió: ' + ai.dudas.map(esc).join(" · ") + '</div>' : '') : '') +
+      '</div>';
+    return topbar("Novedades del mes", "Todo lo que cambia el sueldo de " + perLabel(S.periodo).toLowerCase() + ": faltas, horas extra, licencia, comisiones, adelantos", periodPicker()) +
+      '<div class="stack">' + (cerrada ? '<div class="msg">La liquidación de este mes está cerrada. Para cambiar novedades, reabrila desde Liquidación.</div>' : aiBox) +
+      '<div class="card"><div class="card-h"><div><h2>Planilla de novedades</h2><p>Se guarda sola. Dejá vacío lo que no cambia.</p></div></div>' +
+      '<div class="tabs" role="tablist">' + NOV_TABS.map(function (t) { var n = CAMPOS_NOV.filter(function (c) { return c[3] === t[0]; }).reduce(function (s, c) { return s + emps.filter(function (e) { var v = novDe(S.periodo, e.id)[c[0]]; return v !== "" && v != null; }).length; }, 0); return '<button type="button" role="tab" data-act="novTab" data-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + t[1] + (n ? ' (' + n + ')' : '') + '</button>'; }).join("") + '</div>' +
+      '<div class="tbl-wrap"><table class="nov"><thead><tr><th>Empleado</th>' + campos.map(function (c) { return '<th class="r">' + c[1] + '</th>'; }).join("") + '</tr></thead><tbody>' +
+      (emps.length ? emps.map(function (e) {
+        var n = novDe(S.periodo, e.id);
+        return '<tr><td class="who"><b>' + esc(e.nombre) + '</b><span>' + (e.tipo === "jornalero" ? "Jornalero" : "Mensual") + '</span></td>' + campos.map(function (c) {
+          if (c[2] && c[2] !== e.tipo) return '<td class="na">—</td>';
+          var v = n[c[0]];
+          return '<td class="r"><input type="number" step="any" min="0" inputmode="decimal" id="n_' + esc(e.id) + '_' + c[0] + '" data-nov="' + c[0] + '" data-id="' + esc(e.id) + '" aria-label="' + esc(c[1] + " de " + e.nombre) + '" value="' + esc(v == null ? "" : v) + '"' + (cerrada ? " disabled" : "") + (c[0] === "diasTrabajados" ? ' placeholder="25"' : '') + '></td>';
+        }).join("") + '</tr>';
+      }).join("") : '<tr><td colspan="13"><div class="empty"><b>No hay empleados activos en este mes</b>Cargalos en Empleados.</div></td></tr>') +
+      '</tbody></table></div>' +
+      '<div class="card-b"><p class="note">' + (tab === "sueldo" ? 'Alimentación: tickets o partida de comida. No lleva aportes hasta 100 UI por día trabajado y el 20% del sueldo; el resto sí. Paga IRPF entero. Adelantos y otros descuentos se restan del líquido.' :
+        'Certificación médica, accidente de trabajo y seguro de paro: esos días no los paga la empresa (los paga el BPS o el BSE) y el recibo trae una estimación del subsidio. Licencias especiales: para los mensuales ya están dentro del sueldo; a los jornaleros se les pagan los jornales. Topes: estudio 6, 9 o 12 días al año según horas semanales (con 6 meses de antigüedad); paternidad, matrimonio y duelo 3 días; hijo con discapacidad 10 días al año; familiar con discapacidad o enfermedad terminal 64 horas pagas al año.') + '</p></div></div></div>';
+  };
+
+  // Liquidación
+  VIEWS.liquidacion = function () {
+    var recs = calcMes(S.periodo), l = liqDe(S.periodo, "mensual"), cerrada = l && l.estado === "cerrada";
+    var checks = revisar(S.periodo, recs), rv = S.ui.review && S.ui.review.periodo === S.periodo ? S.ui.review : null;
+    var conf = S.ui.confirm;
+    var acts = cerrada ? '<button class="btn" data-act="csv">Exportar planilla (Excel)</button><button class="btn" data-act="nomina">Nómina para BPS</button><button class="btn" data-act="reopenAsk">Reabrir</button>' :
+      '<button class="btn ai" data-act="review"' + (!AI || !recs.length ? " disabled" : "") + '>Revisar con IA</button><button class="btn" data-act="csv"' + (!recs.length ? " disabled" : "") + '>Exportar planilla (Excel)</button><button class="btn" data-act="nomina"' + (!recs.length ? " disabled" : "") + '>Nómina para BPS</button><button class="btn pri" data-act="closeAsk"' + (!recs.length ? " disabled" : "") + '>Cerrar y emitir recibos</button>';
+    var confirm = "";
+    if (conf === "close") confirm = '<div class="confirm">Se van a emitir ' + recs.length + ' recibos de ' + perLabel(S.periodo).toLowerCase() + ' y las novedades quedan bloqueadas.' + (checks.filter(function (c) { return c.nivel === "alta"; }).length ? ' <b>Hay controles en rojo sin resolver.</b>' : '') + ' <button class="btn pri sm" data-act="close">Cerrar liquidación</button><button class="btn sm" data-act="cancelConfirm">Cancelar</button></div>';
+    if (conf === "reopen") confirm = '<div class="confirm">Los recibos de este mes se van a borrar y las novedades vuelven a quedar editables. <button class="btn danger sm" data-act="reopen">Reabrir liquidación</button><button class="btn sm" data-act="cancelConfirm">Cancelar</button></div>';
+    var open = S.ui.liqOpen;
+    return topbar("Liquidación", cerrada ? "Cerrada el " + fechaUY((l.cerrada || "").slice(0, 10)) + ". Los recibos están en Recibos." : "Calculada con las novedades cargadas. Revisala y cerrala para emitir los recibos.", periodPicker()) +
+      '<div class="stack"><div class="btns no-print">' + acts + '</div>' + confirm +
+      ((checks.length || rv) ? '<div class="card"><div class="card-h"><div><h2>Revisión</h2><p>Controles automáticos' + (rv ? " y observaciones de la IA" : "") + '</p></div>' + (rv && rv.loading ? '<span class="loading">La IA está revisando…</span>' : '') + '</div><div class="card-b stack">' +
+        (rv && rv.error ? '<div class="msg err">' + esc(rv.error) + '</div>' : '') +
+        (rv && rv.resumen ? '<p>' + esc(rv.resumen) + '</p>' : '') +
+        '<ul class="obs">' + checks.map(obsItem).join("") + (rv && rv.obs ? rv.obs.map(function (o) { o = Object.assign({}, o); o.texto = "IA: " + o.texto; return obsItem(o); }).join("") : '') + '</ul>' +
+        (!checks.length && rv && rv.obs && !rv.obs.length && !rv.loading ? '<p class="note">Sin observaciones.</p>' : '') + '</div></div>' : '') +
+      '<div class="card"><div class="tbl-wrap"><table><thead><tr><th>Empleado</th><th class="r">Nominal gravado</th><th class="r">Aportes</th><th class="r">IRPF</th><th class="r">Otros desc.</th><th class="r">Líquido</th><th class="r">Patronal</th><th class="r">Costo empresa</th></tr></thead><tbody>' +
+      (recs.length ? recs.map(function (r) {
+        var t = r.totales, otros = nz(t.otrosDesc), isOpen = open === r.empleado.id;
+        return '<tr class="click" data-act="liqOpen" data-id="' + esc(r.empleado.id) + '" aria-expanded="' + isOpen + '"><td class="who"><b>' + esc(r.empleado.nombre) + '</b><span>' + esc(r.empleado.cargo || "") + '</span></td><td class="r num">' + money(t.gravado) + '</td><td class="r num">' + money(t.aportes) + '</td><td class="r num">' + money(t.irpf) + '</td><td class="r num">' + money(otros) + '</td><td class="r num liq">' + money(t.liquido) + '</td><td class="r num">' + money(t.patronal) + '</td><td class="r num">' + money(t.costo) + '</td></tr>' +
+          (isOpen ? '<tr><td colspan="8" style="background:var(--sunk)">' + reciboHTML(r) + '</td></tr>' : '');
+      }).join("") : '<tr><td colspan="8"><div class="empty"><b>No hay empleados activos en ' + perLabel(S.periodo).toLowerCase() + '</b></div></td></tr>') +
+      '</tbody>' + (recs.length ? '<tfoot><tr><td>Total</td>' + ["gravado", "aportes", "irpf"].map(function (k) { return '<td class="r num">' + money(sumT(recs, k)) + '</td>'; }).join("") + '<td class="r num">' + money(sumT(recs, "otrosDesc")) + '</td><td class="r num liq">' + money(sumT(recs, "liquido")) + '</td><td class="r num">' + money(sumT(recs, "patronal")) + '</td><td class="r num">' + money(sumT(recs, "costo")) + '</td></tr></tfoot>' : '') + '</table></div></div>' +
+      '<p class="note">Tocá un empleado para ver su recibo. Aportes = jubilatorio, FONASA y FRL. Otros desc. = Fondo de Solidaridad, pensión alimenticia, retenciones, adelantos y otros. Patronal = jubilatorio 7,5%, FONASA 5%, FRL, FGCL y BSE.' + (+S.periodo.slice(5, 7) === 12 && P().ajusteAnual ? ' <b>Diciembre:</b> el IRPF se calcula con el ajuste anual (todo el año, menos lo ya retenido).' : '') + ' <b>Nómina para BPS</b> baja un resumen por empleado (días, nominal, aportes, FONASA, IRPF) para pasar a GAFI; no es el archivo oficial.</p></div>';
+  };
+
+  // Recibo (documento)
+  var TIPO_REC = { mensual: "Recibo de sueldo", aguinaldo: "Recibo de aguinaldo", egreso: "Liquidación por egreso" };
+  function reciboHTML(r) {
+    var em = S.empresa || {}, e = r.empleado, t = r.totales;
+    var hab = r.lineas.filter(function (l) { return l.tipo === "haber"; }), des = r.lineas.filter(function (l) { return l.tipo === "descuento"; });
+    var row = function (l, col) { return '<tr><td>' + esc(l.concepto) + (l.detalle ? '<small>' + esc(l.detalle) + '</small>' : '') + '</td><td class="r num">' + (col === 0 ? money(l.monto) : '') + '</td><td class="r num">' + (col === 1 ? money(-l.monto) : '') + '</td></tr>'; };
+    var per = r.tipo === "egreso" ? "Egreso " + fechaUY(r.fecha) : r.tipo === "aguinaldo" ? "Aguinaldo " + perLabel(r.periodo).toLowerCase() : perLabel(r.periodo);
+    return '<article class="recibo" aria-label="' + esc(TIPO_REC[r.tipo] + " de " + e.nombre) + '">' +
+      '<div class="rc-head"><div><h2>' + esc(TIPO_REC[r.tipo] || "Recibo") + '</h2><div>' + esc(per) + '</div></div><div class="r"><b>' + esc(em.nombre || "") + '</b><br>RUT ' + esc(em.rut || "—") + '<br>N.º BPS ' + esc(em.bps || "—") + ' · Planilla MTSS ' + esc(em.mtss || "—") + '</div></div>' +
+      '<div class="rc-meta"><div><span>Trabajador</span>' + esc(e.nombre) + '</div><div><span>Cédula</span>' + esc(e.ci || "—") + '</div><div><span>Cargo</span>' + esc(e.cargo || "—") + '</div>' +
+      '<div><span>Fecha de ingreso</span>' + fechaUY(e.ingreso) + '</div><div><span>Forma de pago</span>' + (e.tipo === "jornalero" ? "Jornalero · " + money(e.jornal) + " por día" : "Mensual · " + money(e.sueldo)) + '</div><div><span>Sector</span>' + esc(e.sector || "—") + '</div>' + (e.categoria ? '<div class="w2"><span>Categoría (laudo)</span>' + esc(e.categoria) + '</div>' : '') + '</div>' +
+      '<div class="tbl-wrap"><table class="rc-tbl"><thead><tr><th>Concepto</th><th class="r">Haberes</th><th class="r">Descuentos</th></tr></thead><tbody>' + hab.map(function (l) { return row(l, 0); }).join("") + des.map(function (l) { return row(l, 1); }).join("") +
+      '</tbody><tfoot><tr><td>Totales</td><td class="r num">' + money(t.haberes) + '</td><td class="r num">' + money(t.descuentos) + '</td></tr></tfoot></table></div>' +
+      '<div class="rc-liq"><span>Líquido a cobrar</span><b>' + money(t.liquido) + '</b></div>' +
+      (r.notas && r.notas.length ? '<ul class="rc-notas">' + r.notas.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join("") + '</ul>' : '') +
+      '<div class="rc-pat">Aportes patronales a cargo de la empresa (no se descuentan): ' + money(t.patronal) + ' · Costo total ' + money(t.costo) + '</div>' +
+      '<div class="rc-foot"><div>Declaro haber recibido el importe líquido de este recibo y copia del mismo.<div class="rc-sign">Firma del trabajador</div></div><div>' + esc(em.direccion || "") + (em.direccion ? '<br>' : '') + 'Emitido el ' + fechaUY((r.emitido || hoyISO()).slice(0, 10)) + '<div class="rc-sign">Firma y sello de la empresa</div></div></div>' +
+      '</article>';
+  }
+
+  // Recibos
+  function recibosEmitidos() {
+    var out = [];
+    Object.keys(S.liqs).forEach(function (k) { var l = S.liqs[k]; if (l.estado === "cerrada") l.recibos.forEach(function (r, i) { out.push({ key: k + "#" + i, liq: l, r: r }); }); });
+    return out.sort(function (a, b) { return (b.liq.periodo + b.liq.tipo).localeCompare(a.liq.periodo + a.liq.tipo) || a.r.empleado.nombre.localeCompare(b.r.empleado.nombre); });
+  }
+  VIEWS.recibos = function () {
+    var all = recibosEmitidos(), filtro = S.ui.recFiltro || "todos";
+    var opciones = []; all.forEach(function (x) { var k = x.liq.id; if (opciones.indexOf(k) < 0) opciones.push(k); });
+    var list = all.filter(function (x) { return filtro === "todos" || x.liq.id === filtro; });
+    var cur = list.filter(function (x) { return x.key === S.ui.rec; })[0] || list[0];
+    var ex = cur && S.ui.explain[cur.key];
+    var canPrint = !hasClaude;
+    return topbar("Recibos", all.length + " emitidos", '<label class="period" for="recF">Mostrar <select id="recF"><option value="todos">Todos</option>' + opciones.map(function (k) { var l = S.liqs[k]; return '<option value="' + esc(k) + '"' + (k === filtro ? " selected" : "") + '>' + esc(liqNombre(l)) + '</option>'; }).join("") + '</select></label>') +
+      (all.length ? '<div class="split"><div class="card"><div class="list">' + list.map(function (x) {
+        return '<button type="button" data-act="recSel" data-key="' + esc(x.key) + '" aria-current="' + (cur && x.key === cur.key) + '"><span><span class="t">' + esc(x.r.empleado.nombre) + '</span><br><span class="s">' + esc(liqNombre(x.liq)) + '</span></span><span class="num s">' + money0(x.r.totales.liquido) + '</span></button>';
+      }).join("") + '</div></div>' +
+        (cur ? '<div class="stack"><div class="btns no-print"><button class="btn ai" data-act="explain" data-key="' + esc(cur.key) + '"' + (!AI ? " disabled" : "") + '>Explicar este recibo con IA</button><button class="btn" data-act="mailOpen" data-key="' + esc(cur.key) + '" aria-expanded="' + (S.ui.mail === cur.key) + '">Preparar mail</button><button class="btn" data-act="recDown" data-key="' + esc(cur.key) + '">Descargar recibo</button>' + (canPrint ? '<button class="btn" data-act="print">Imprimir</button>' : '') + '</div>' +
+          (S.ui.mail === cur.key ? mailBox(cur, ex) : '') +
+          (ex ? '<div class="ai-box"><h3>Explicación del recibo</h3>' + (ex.loading ? '<span class="loading">La IA está leyendo el recibo…</span>' : ex.error ? '<div class="msg err">' + esc(ex.error) + '</div>' :
+            '<div class="explain"><p>' + esc(ex.resumen) + '</p><ul>' + (ex.puntos || []).map(function (p) { return '<li>' + esc(p) + '</li>'; }).join("") + '</ul>' + (ex.mensaje ? '<b>Mensaje para enviarle al empleado</b><div class="quote" id="exMsg">' + esc(ex.mensaje) + '</div><div class="btns"><button class="btn sm" data-act="copyMsg">Copiar mensaje</button></div>' : '') + '</div>') + '</div>' : '') +
+          reciboHTML(cur.r) + '</div>' : '') + '</div>' :
+        '<div class="card"><div class="empty"><b>Todavía no hay recibos emitidos</b>Se emiten al cerrar una liquidación, un aguinaldo o un egreso.</div></div>');
+  };
+  function mailDe(x, ex) {
+    var r = x.r, e = S.empleados[r.empleado.id] || r.empleado, em = S.empresa || {}, t = r.totales;
+    var que = r.tipo === "egreso" ? "la liquidación de tu egreso del " + fechaUY(r.fecha) : r.tipo === "aguinaldo" ? "el recibo de aguinaldo de " + perLabel(r.periodo).toLowerCase() : "el recibo de sueldo de " + perLabel(r.periodo).toLowerCase();
+    var asunto = TIPO_REC[r.tipo] + " · " + (r.tipo === "egreso" ? fechaUY(r.fecha) : perLabel(r.periodo)) + " · " + (em.nombre || "");
+    var txt = "Hola, " + String(e.nombre || "").split(" ")[0] + ":\n\nTe mandamos " + que + ".\n\n" +
+      "Haberes: " + money(t.haberes) + "\nDescuentos: " + money(t.descuentos) + "\nLíquido a cobrar: " + money(t.liquido) + "\n\n" +
+      (ex && ex.mensaje ? ex.mensaje + "\n\n" : "") +
+      "Va adjunto el recibo. Si tenés alguna duda, respondé este mail.\n\nSaludos,\n" + (em.nombre || "Recursos Humanos");
+    return { para: e.email || "", asunto: asunto, texto: txt };
+  }
+  function mailBox(x, ex) {
+    var m = mailDe(x, ex);
+    var href = "mailto:" + encodeURIComponent(m.para) + "?subject=" + encodeURIComponent(m.asunto) + "&body=" + encodeURIComponent(m.texto);
+    return '<div class="ai-box mail"><h3>Mail para ' + esc(x.r.empleado.nombre) + '</h3>' +
+      '<div class="row"><span>Para</span>' + (m.para ? esc(m.para) : '<b>Falta el mail en la ficha del empleado</b>') + '</div><div class="row"><span>Asunto</span>' + esc(m.asunto) + '</div>' +
+      '<div class="quote" id="mailTxt" style="white-space:pre-wrap">' + esc(m.texto) + '</div>' +
+      '<div class="btns"><button class="btn sm" data-act="copyMail">Copiar texto</button>' + (m.para ? '<a class="btn sm" href="' + esc(href) + '" target="_blank" rel="noopener">Abrir en el correo</a>' : '<a class="btn sm" href="#empleados" data-act="empEdit" data-id="' + esc(x.r.empleado.id) + '">Agregar el mail</a>') + '<button class="btn sm" data-act="recDown" data-key="' + esc(x.key) + '">Descargar recibo para adjuntar</button></div>' +
+      '<p class="note">El correo se abre con el texto listo; el recibo hay que adjuntarlo a mano (bajalo con el botón de al lado).' + (ex && ex.mensaje ? ' El texto incluye el mensaje que armó la IA.' : ' Si antes tocás «Explicar este recibo con IA», el mail suma su explicación.') + '</p></div>';
+  }
+  function liqNombre(l) { return l.tipo === "egreso" ? "Egreso · " + fechaUY(l.fecha) : l.tipo === "aguinaldo" ? "Aguinaldo · " + perLabel(l.periodo) : "Sueldo · " + perLabel(l.periodo); }
+
+  // Aguinaldo
+  function agPeriodo() { if (S.ui.agSem) return S.ui.agSem; var y = +S.periodo.slice(0, 4), m = +S.periodo.slice(5, 7); return m <= 6 ? y + "-06" : y + "-12"; }
+  function calcAguinaldo(per) {
+    var l = liqDe(per, "aguinaldo"); if (l && l.estado === "cerrada") return l.recibos;
+    var meses = E.semestreDe(per), p = P();
+    return Object.keys(S.empleados).map(function (k) { return S.empleados[k]; }).filter(function (e) {
+      return e.ingreso <= per + "-28" && (!e.egreso || e.egreso.slice(0, 7) >= per);
+    }).sort(function (a, b) { return a.nombre.localeCompare(b.nombre); }).map(function (e) {
+      var ms = meses.map(function (m) { var g = gravadoMes(m, e); return g ? { periodo: m, gravado: g.gravado, estimado: g.estimado } : null; }).filter(Boolean);
+      var r = E.liquidarAguinaldo(e, ms, p);
+      return { empleado: snapEmp(e), periodo: per, tipo: "aguinaldo", lineas: r.lineas, totales: r.totales, meses: ms };
+    });
+  }
+  VIEWS.aguinaldo = function () {
+    var per = agPeriodo(), recs = calcAguinaldo(per), l = liqDe(per, "aguinaldo"), cerrada = l && l.estado === "cerrada";
+    var y = +per.slice(0, 4), opts = [(y - 1) + "-12", y + "-06", y + "-12", (y + 1) + "-06"];
+    var meses = E.semestreDe(per);
+    return topbar("Aguinaldo", "Se paga en junio (de diciembre a mayo) y en diciembre (de junio a noviembre): 1/12 de lo cobrado en el semestre",
+      '<label class="period" for="agSem">Pago de <select id="agSem">' + opts.map(function (o) { return '<option value="' + o + '"' + (o === per ? " selected" : "") + '>' + perLabel(o) + '</option>'; }).join("") + '</select></label><span class="pill ' + (cerrada ? "ok" : "warn") + '">' + (cerrada ? "Emitido" : "Proyección") + '</span>') +
+      '<div class="stack"><div class="btns no-print">' + (cerrada ? '<a class="btn" href="#recibos" data-act="recFilter" data-liq="' + esc(liqId(per, "aguinaldo")) + '">Ver recibos</a>' : (S.ui.confirm === "agClose" ? '<div class="confirm">Se emiten ' + recs.length + ' recibos de aguinaldo de ' + perLabel(per).toLowerCase() + '. <button class="btn pri sm" data-act="agClose">Emitir</button><button class="btn sm" data-act="cancelConfirm">Cancelar</button></div>' : '<button class="btn pri" data-act="agAsk"' + (!recs.length ? " disabled" : "") + '>Emitir recibos de aguinaldo</button>')) + '</div>' +
+      '<div class="card"><div class="tbl-wrap"><table><thead><tr><th>Empleado</th>' + meses.map(function (m) { return '<th class="r">' + MESES[+m.slice(5, 7) - 1].slice(0, 3) + '</th>'; }).join("") + '<th class="r">Aguinaldo</th><th class="r">Descuentos</th><th class="r">Líquido</th></tr></thead><tbody>' +
+      (recs.length ? recs.map(function (r) {
+        return '<tr><td class="who"><b>' + esc(r.empleado.nombre) + '</b><span>' + esc(r.empleado.cargo || "") + '</span></td>' + meses.map(function (m) { var x = (r.meses || []).filter(function (q) { return q.periodo === m; })[0]; return '<td class="r num"' + (x && x.estimado ? ' style="color:var(--muted)" title="Estimado con el sueldo actual"' : '') + '>' + (x ? money0(x.gravado) + (x.estimado ? "*" : "") : "—") + '</td>'; }).join("") +
+          '<td class="r num">' + money(r.totales.haberes) + '</td><td class="r num">' + money(r.totales.descuentos) + '</td><td class="r num liq">' + money(r.totales.liquido) + '</td></tr>';
+      }).join("") : '<tr><td colspan="10"><div class="empty"><b>No hay empleados en ese semestre</b></div></td></tr>') +
+      '</tbody>' + (recs.length ? '<tfoot><tr><td>Total</td>' + meses.map(function () { return '<td></td>'; }).join("") + '<td class="r num">' + money(sumT(recs, "haberes")) + '</td><td class="r num">' + money(sumT(recs, "descuentos")) + '</td><td class="r num liq">' + money(sumT(recs, "liquido")) + '</td></tr></tfoot>' : '') + '</table></div></div>' +
+      '<p class="note">* Mes todavía no liquidado: se estima con el sueldo y las novedades cargadas. El aguinaldo aporta jubilatorio, FONASA y FRL; el IRPF se retiene a la tasa marginal del sueldo del empleado.</p></div>';
+  };
+
+  // Egresos
+  var MOTIVOS = [["despido", "Despido común"], ["despido_enfermedad", "Despido durante enfermedad (doble)"], ["despido_accidente", "Despido tras accidente de trabajo (triple)"], ["despido_denuncia", "Despido por denunciar al BPS (triple)"],
+    ["despido_embarazo", "Despido por embarazo o maternidad (+6 sueldos)"], ["despido_acoso", "Despido por denunciar acoso sexual (+6 sueldos)"], ["despido_discapacidad", "Despido de persona con discapacidad (+6 sueldos)"],
+    ["renuncia", "Renuncia"], ["mutuo", "Mutuo acuerdo"], ["fin", "Fin de contrato"]];
+  function motivoNombre(m) { var x = MOTIVOS.filter(function (o) { return o[0] === m; })[0]; return x ? x[1] : m; }
+  VIEWS.egresos = function () {
+    var g = S.ui.egreso || {}, emps = activos(hoyISO().slice(0, 7)).concat(activos());
+    var seen = {}; emps = emps.filter(function (e) { if (seen[e.id] || e.egreso) return false; seen[e.id] = 1; return true; });
+    var e = g.id && S.empleados[g.id];
+    var res = null;
+    if (e && g.fecha) res = calcEgreso(e, g);
+    var hechos = Object.keys(S.liqs).map(function (k) { return S.liqs[k]; }).filter(function (l) { return l.tipo === "egreso"; });
+    return topbar("Egresos", "Liquidación final por despido, renuncia o fin de contrato") +
+      '<div class="stack"><div class="card"><div class="card-h"><div><h2>Calcular un egreso</h2><p>La licencia no gozada, el salario vacacional y la indemnización no llevan aportes</p></div></div><div class="card-b stack"><form class="form" id="fEgr">' +
+      '<div class="f w2"><label for="eg_id">Empleado</label><select id="eg_id" name="empleado"><option value="">Elegí un empleado</option>' + emps.map(function (x) { return '<option value="' + esc(x.id) + '"' + (x.id === g.id ? " selected" : "") + '>' + esc(x.nombre) + ' · ' + esc(x.cargo || "") + '</option>'; }).join("") + '</select></div>' +
+      '<div class="f"><label for="eg_fecha">Fecha de egreso</label><input type="date" id="eg_fecha" name="fecha" value="' + esc(g.fecha || hoyISO()) + '"></div>' +
+      '<div class="f w2"><label for="eg_motivo">Motivo</label><select id="eg_motivo" name="motivo">' + MOTIVOS.map(function (o) { return '<option value="' + o[0] + '"' + (g.motivo === o[0] ? " selected" : "") + '>' + o[1] + '</option>'; }).join("") + '</select></div>' +
+      '<div class="f"><label for="eg_dias">Días trabajados en el mes</label><input type="number" min="0" max="31" id="eg_dias" name="diasMes" value="' + esc(g.diasMes == null ? "" : g.diasMes) + '" placeholder="Hasta la fecha de egreso"></div>' +
+      '<div class="f"><label for="eg_pend">Días de licencia pendientes del año anterior</label><input type="number" min="0" step="any" id="eg_pend" name="licenciaPendiente" value="' + esc(g.licenciaPendiente == null ? "" : g.licenciaPendiente) + '" placeholder="0"></div>' +
+      '<div class="f"><label for="eg_adel">Adelantos a descontar ($)</label><input type="number" min="0" step="any" id="eg_adel" name="adelantos" value="' + esc(g.adelantos == null ? "" : g.adelantos) + '" placeholder="0"></div>' +
+      '<div class="f w3 btns"><button class="btn pri" type="submit">Calcular</button></div></form>' +
+      (res ? '<div class="msg">Antigüedad: <b>' + res.egreso.antiguedadAnios + ' años</b> (' + res.egreso.antiguedadDias + ' días) · Licencia a pagar: <b>' + String(res.egreso.licenciaDias).replace(".", ",") + ' días</b>' + (String(g.motivo).indexOf("despido") === 0 ? ' · Indemnización: <b>' + money(res.egreso.indemnizacion) + '</b>' + (res.egreso.especial ? ' (común ' + money(res.egreso.comun) + ' + especial ' + money(res.egreso.especial) + ')' : '') : '') + '</div>' +
+        (res.egreso.especial ? '<p class="note">El despido especial lo termina definiendo un juez si hay reclamo: este cálculo es la referencia que usa la ley. La indemnización especial se calcula sobre la misma base que la común.</p>' : '') + reciboHTML(res) +
+        '<div class="btns no-print">' + (S.ui.confirm === "egClose" ? '<div class="confirm">' + esc(e.nombre) + ' pasa a figurar como egresado el ' + fechaUY(g.fecha) + ' y se emite el recibo. <button class="btn pri sm" data-act="egClose">Confirmar egreso</button><button class="btn sm" data-act="cancelConfirm">Cancelar</button></div>' : '<button class="btn pri" data-act="egAsk">Confirmar egreso y emitir recibo</button>') + '</div>' : '<p class="note">Elegí un empleado y la fecha, y tocá Calcular.</p>') +
+      '</div></div>' +
+      (hechos.length ? '<div class="card"><div class="card-h"><h2>Egresos registrados</h2></div><div class="tbl-wrap"><table><thead><tr><th>Empleado</th><th>Fecha</th><th>Motivo</th><th class="r">Líquido</th><th></th></tr></thead><tbody>' + hechos.map(function (l) { var r = l.recibos[0]; return '<tr><td>' + esc(r.empleado.nombre) + '</td><td class="num">' + fechaUY(l.fecha) + '</td><td>' + esc(motivoNombre(l.motivo)) + '</td><td class="r num">' + money(r.totales.liquido) + '</td><td><a href="#recibos" data-act="recFilter" data-liq="' + esc(l.id) + '">Ver recibo</a></td></tr>'; }).join("") + '</tbody></table></div></div>' : '') + '</div>';
+  };
+  function calcEgreso(e, g) {
+    var per = g.fecha.slice(0, 7), sem = E.semestreDe(+per.slice(5, 7) <= 5 || +per.slice(5, 7) === 12 ? (+per.slice(5, 7) === 12 ? (+per.slice(0, 4) + 1) + "-06" : per.slice(0, 4) + "-06") : per.slice(0, 4) + "-12");
+    var ms = sem.filter(function (m) { return m < per; }).map(function (m) { var x = gravadoMes(m, e); return x ? { periodo: m, gravado: x.gravado, estimado: x.estimado } : null; }).filter(Boolean);
+    // promedio de lo cobrado en los últimos 6 meses liquidados (incluye comisiones y extras)
+    var ult = [], m = per;
+    for (var i = 0; i < 6; i++) { m = perPrev(m); var l = liqDe(m, "mensual"); if (l && l.estado === "cerrada") { var x = l.recibos.filter(function (q) { return q.empleado.id === e.id; })[0]; if (x) ult.push(x.totales.gravado); } }
+    var prom = ult.length ? ult.reduce(function (s, v) { return s + v; }, 0) / ult.length : 0;
+    var r = E.liquidarEgreso(e, { fecha: g.fecha, motivo: g.motivo || "despido", diasMes: g.diasMes, licenciaPendiente: g.licenciaPendiente, adelantos: g.adelantos, mesesSemestre: ms, promedioMensual: prom }, P());
+    r.empleado = snapEmp(e); r.tipo = "egreso"; r.fecha = g.fecha; r.periodo = per;
+    return r;
+  }
+
+  // Empresa y parámetros
+  var CAMPOS_EMPRESA = [["nombre", "Razón social"], ["rut", "RUT"], ["bps", "N.º de empresa en BPS"], ["mtss", "N.º de planilla MTSS"], ["rubro", "Rubro"], ["direccion", "Dirección"]];
+  var CAMPOS_PARAM = [
+    ["bpc", "BPC ($)", "Base de Prestaciones y Contribuciones 2026"], ["smn", "Salario mínimo nacional ($)", "Desde el 1/7/2026"], ["topeJub", "Tope del aporte jubilatorio ($)", "Verificalo en BPS"],
+    ["jubPers", "Aporte jubilatorio personal (%)"], ["frlPers", "FRL personal (%)"], ["jubPat", "Aporte jubilatorio patronal (%)"], ["fonasaPat", "FONASA patronal (%)"], ["frlPat", "FRL patronal (%)"], ["fgcl", "FGCL patronal (%)"], ["bse", "Seguro BSE (%)", "Depende del rubro"],
+    ["recargoExtra", "Recargo hora extra hábil (%)"], ["recargoExtraDescanso", "Recargo hora extra descanso o feriado (%)"], ["nocturnidad", "Nocturnidad (% del valor hora)"], ["presentismo", "Presentismo (% del sueldo)", "0 si la empresa no lo paga"],
+    ["ui", "Unidad Indexada ($)", "Al 1/1/2026; para el tope de alimentación"], ["alimTopeUI", "Alimentación sin aportes (UI por día)"], ["alimTopePct", "Alimentación sin aportes (% del sueldo)", "Tope conjunto con salud, seguros y transporte"],
+    ["subsidioTope", "Tope del subsidio por enfermedad ($ por mes)"], ["paroMin", "Seguro de paro: mínimo ($ por mes)"], ["paroTope", "Seguro de paro: tope ($ por mes)"],
+    ["fondo1", "Fondo de Solidaridad cat. 1 ($ por mes)"], ["fondo2", "Fondo de Solidaridad cat. 2 ($ por mes)"], ["fondo3", "Fondo de Solidaridad cat. 3 ($ por mes)"], ["fondo4", "Fondo de Solidaridad cat. 4 ($ por mes)"], ["fondo5", "Fondo de Solidaridad cat. 5 ($ por mes)", "Comunicado R 5/2026; confirmalo con el Fondo"],
+    ["minCobro", "Mínimo que cobra el trabajador (%)", "Ley 17.829"], ["minCobroAG", "Mínimo con alquiler o préstamos (%)", "Ley 17.829"], ["ajusteAnual", "Ajuste anual de IRPF en diciembre", "1 = sí, 0 = no"]
+  ];
+  VIEWS.parametros = function () {
+    var em = S.empresa || {}, p = P();
+    return topbar("Empresa y parámetros", "Datos que salen en los recibos y valores legales que usa el cálculo") +
+      '<div class="stack"><div class="card"><div class="card-h"><h2>Empresa</h2></div><div class="card-b"><form class="form" id="fEmpresa">' + CAMPOS_EMPRESA.map(function (c) { return '<div class="f"><label for="em_' + c[0] + '">' + c[1] + '</label><input id="em_' + c[0] + '" name="' + c[0] + '" value="' + esc(em[c[0]] || "") + '"' + (c[0] === "nombre" ? " required" : "") + '></div>'; }).join("") + '<div class="f w3 btns"><button class="btn pri" type="submit">Guardar empresa</button></div></form></div></div>' +
+      '<div class="card"><div class="card-h"><div><h2>Parámetros legales</h2><p>Valores ' + esc(p.vigencia) + '. FONASA e IRPF usan las tasas y franjas del BPS (Comunicado R 5/2026).</p></div><button class="btn sm" data-act="paramReset">Restaurar valores 2026</button></div><div class="card-b"><form class="form" id="fParam">' + CAMPOS_PARAM.map(function (c) { return '<div class="f"><label for="pa_' + c[0] + '">' + c[1] + '</label><input id="pa_' + c[0] + '" name="' + c[0] + '" type="number" step="any" min="0" value="' + esc(p[c[0]]) + '">' + (c[2] ? '<small>' + c[2] + '</small>' : '') + '</div>'; }).join("") +
+      '<div class="f w3"><small>IRPF mensual: franjas de 7, 10, 15, 30, 50, 75 y 115 BPC con tasas de 0% a 36%; base +6% si supera 10 BPC; deducciones (aportes y 20 BPC anuales por hijo) al 14% hasta 15 BPC y al 8% por encima. FONASA: 3% a 8% según ingreso (2,5 BPC) y cónyuge o hijos a cargo. El Fondo de Solidaridad también se deduce del IRPF. En diciembre, el ajuste anual recalcula el IRPF del año con la escala anual y descuenta lo ya retenido.</small></div><div class="f w3 btns"><button class="btn pri" type="submit">Guardar parámetros</button></div></form></div></div>' +
+      laudosCard() +
+      '<div class="card"><div class="card-h"><div><h2>Datos</h2><p>' + (DB ? "Se guardan en la base de datos de esta página." : "Se guardan en este navegador. Bajá un respaldo seguido.") + '</p></div></div><div class="card-b stack"><div class="btns"><button class="btn" data-act="backup">Descargar respaldo</button><label class="btn" for="restore">Restaurar respaldo<input type="file" id="restore" accept="application/json,.json" hidden></label><button class="btn" data-act="demoAsk">Cargar empresa de ejemplo</button><button class="btn danger" data-act="wipeAsk">Borrar todo</button></div>' +
+      (S.ui.confirm === "demo" ? '<div class="confirm">Se reemplazan todos los datos por la empresa de ejemplo. <button class="btn pri sm" data-act="demo">Cargar ejemplo</button><button class="btn sm" data-act="cancelConfirm">Cancelar</button></div>' : '') +
+      (S.ui.confirm === "wipe" ? '<div class="confirm">Se borran la empresa, los empleados, las novedades y los recibos. No se puede deshacer. <button class="btn danger sm" data-act="wipe">Borrar todo</button><button class="btn sm" data-act="cancelConfirm">Cancelar</button></div>' : '') +
+      '</div></div></div>';
+  };
+
+  function laudosCard() {
+    var items = S.ui.laudosDraft || laudos();
+    var usados = function (id) { return Object.keys(S.empleados).filter(function (k) { return S.empleados[k].categoria === id && !S.empleados[k].egreso; }).length; };
+    return '<div class="card"><div class="card-h"><div><h2>Categorías y laudos (Consejos de Salarios)</h2><p>El laudo es el mínimo de cada categoría en tu grupo de actividad. Copialo del decreto o convenio vigente (MTSS): la página no los trae cargados.</p></div></div>' +
+      '<form id="fLaudos"><div class="tbl-wrap"><table class="lau"><thead><tr><th>Grupo / subgrupo</th><th>Categoría</th><th class="r">Laudo mensual ($)</th><th class="r">Laudo jornal ($)</th><th class="r">Empleados</th><th></th></tr></thead><tbody>' +
+      (items.length ? items.map(function (c, i) {
+        return '<tr data-i="' + i + '"><td><input name="grupo" data-id="' + esc(c.id) + '" aria-label="Grupo" value="' + esc(c.grupo || "") + '" placeholder="10 · Comercio"></td><td><input name="nombre" aria-label="Categoría" value="' + esc(c.nombre || "") + '" placeholder="Vendedor"></td>' +
+          '<td><input name="mensual" type="number" step="any" min="0" aria-label="Laudo mensual" value="' + esc(c.mensual == null ? "" : c.mensual) + '"></td><td><input name="jornal" type="number" step="any" min="0" aria-label="Laudo jornal" value="' + esc(c.jornal == null ? "" : c.jornal) + '"></td>' +
+          '<td class="r num">' + usados(c.id) + '</td><td class="x"><button type="button" class="btn sm" data-act="lauDel" data-i="' + i + '" aria-label="Quitar categoría">Quitar</button></td></tr>';
+      }).join("") : '<tr><td colspan="6"><div class="empty"><b>Sin categorías</b>Agregá las de tu convenio para controlar que nadie cobre menos que el laudo.</div></td></tr>') +
+      '</tbody></table></div><div class="card-b stack"><div class="btns"><button type="button" class="btn" data-act="lauAdd">Agregar categoría</button><button type="submit" class="btn pri">Guardar categorías</button>' + (S.ui.laudosDraft ? '<span class="note">Hay cambios sin guardar.</span>' : '') + '</div>' +
+      '<div class="btns"><label class="period" for="aum_pct">Aumento del Consejo de Salarios <input id="aum_pct" type="number" step="any" min="0" placeholder="%" style="width:80px"></label><button type="button" class="btn" data-act="aumentoAsk">Aplicar a laudos y sueldos</button></div>' +
+      (S.ui.confirm === "aumento" ? '<div class="confirm">Se suben ' + fmtPct(S.ui.aumento) + ' todos los laudos y los sueldos y jornales de los empleados activos. Hacelo antes de liquidar el mes en que rige. <button class="btn pri sm" data-act="aumento">Aplicar aumento</button><button class="btn sm" data-act="cancelConfirm">Cancelar</button></div>' : '') +
+      '</div></form></div>';
+  }
+  function fmtPct(n) { return String(n).replace(".", ",") + "%"; }
+  function leerLaudos() {
+    var rows = document.querySelectorAll("#fLaudos tbody tr[data-i]"), out = [];
+    Array.prototype.forEach.call(rows, function (tr) {
+      var g = function (n) { var el = tr.querySelector('[name="' + n + '"]'); return el ? el.value : ""; };
+      out.push({ id: tr.querySelector('[name="grupo"]').dataset.id, grupo: g("grupo").trim(), nombre: g("nombre").trim(), mensual: g("mensual") === "" ? "" : nz(g("mensual")), jornal: g("jornal") === "" ? "" : nz(g("jornal")) });
+    });
+    return rows.length || !S.ui.laudosDraft ? out : S.ui.laudosDraft;
+  }
+  function aplicarAumento() {
+    var k = 1 + nz(S.ui.aumento) / 100, r2 = function (v) { return Math.round(v * 100) / 100; }, ops = [];
+    var items = laudos().map(function (c) { return Object.assign({}, c, { mensual: c.mensual === "" ? "" : r2(nz(c.mensual) * k), jornal: c.jornal === "" ? "" : r2(nz(c.jornal) * k) }); });
+    if (items.length) ops.push(store.put("config", "laudos", { items: items, actualizado: Date.now() }));
+    Object.keys(S.empleados).forEach(function (id) { var e = S.empleados[id]; if (e.egreso) return; ops.push(store.put("empleados", id, Object.assign({}, e, { sueldo: r2(nz(e.sueldo) * k), jornal: r2(nz(e.jornal) * k) }))); });
+    S.ui.confirm = null; S.ui.laudosDraft = null;
+    Promise.all(ops).then(function () { toast("Aumento de " + fmtPct(S.ui.aumento) + " aplicado"); render(); });
+  }
+
+  // ---------- Locación: reglas fundamentales por país (referencia, valores a noviembre de 2026) ----------
+  function paisEmpresa() { return (S.empresa && S.empresa.pais) || "UY"; }
+  function PAISES() {
+    var p = P(), m0 = function (n) { return Math.round(n).toLocaleString("es-UY"); };
+    return [
+      { id: "UY", nombre: "Uruguay", moneda: "Peso uruguayo (UYU)", calculo: true,
+        resumen: { minimo: "$ " + m0(p.smn) + " por mes", trab: "Jubilatorio 15%, FONASA 3% a 8%, FRL 0,1%", emp: "Jubilatorio 7,5%, FONASA 5%, FRL 0,1%, FGCL 0,025% y BSE", renta: "IRPF de 0% a 36% (mínimo no imponible 7 BPC)", extra: "Aguinaldo: 1/12 de lo cobrado, en junio y diciembre", vac: "20 días + 1 cada 4 años desde el 5.º, con salario vacacional", despido: "1 sueldo por año, máx. 6 (exento de aportes e IRPF)" },
+        organismos: "BPS (aportes y FONASA), DGI (IRPF), MTSS (planilla y laudos), BSE (accidentes)",
+        secciones: [
+          ["Mínimo y jornada", ["Salario mínimo nacional: $ " + m0(p.smn) + " por mes (desde el 1/7/2026). Cada grupo de actividad tiene además su laudo por categoría (Consejos de Salarios).", "Jornada de 8 horas diarias y 44 (comercio) o 48 (industria) semanales. Hora extra: +100% en días hábiles y +150% en descanso o feriado. Máximo 8 horas extra por semana."]],
+          ["Lo que aporta el trabajador", ["Aporte jubilatorio 15% (con tope), FONASA 3% a 8% según ingreso y si tiene cónyuge o hijos a cargo, FRL 0,1%.", "IRPF por franjas de BPC (BPC 2026: $ " + m0(p.bpc) + "), de 0% a 36%, con deducciones por aportes e hijos. Ajuste anual en diciembre."]],
+          ["Lo que paga la empresa", ["Jubilatorio 7,5%, FONASA 5%, FRL 0,1%, FGCL 0,025% y el seguro de accidentes del BSE según el rubro."]],
+          ["Aguinaldo y vacaciones", ["Aguinaldo: 1/12 de lo cobrado en el semestre; se paga en junio y diciembre. Lleva aportes.", "Licencia: 20 días al año, y desde el 5.º año un día más cada 4 años. Se paga además el salario vacacional (jornal líquido por día), sin aportes."]],
+          ["Despido", ["Mensuales: 1 sueldo por año o fracción, máximo 6. Jornaleros: 2 jornales cada 25 trabajados, máximo 150. Exenta de aportes e IRPF.", "Despidos especiales: doble por enfermedad, triple por accidente de trabajo o denuncia al BPS, y 6 sueldos más por embarazo, acoso o discapacidad."]]
+        ],
+        fuentes: [["BPS", "https://www.bps.gub.uy"], ["MTSS", "https://www.gub.uy/ministerio-trabajo-seguridad-social"], ["DGI", "https://www.gub.uy/direccion-general-impositiva"]] },
+      { id: "AR", nombre: "Argentina", moneda: "Peso argentino (ARS)",
+        resumen: { minimo: "$ 398.800 por mes (nov.); $ 406.400 desde diciembre", trab: "17%: jubilación 11%, PAMI 3%, obra social 3%", emp: "18% o 20,4% + 6% obra social + ART", renta: "Ganancias de 5% a 35%, solo sueldos altos", extra: "SAC: medio mejor sueldo del semestre, en junio y diciembre", vac: "14, 21, 28 o 35 días corridos según antigüedad", despido: "1 mejor sueldo por año + preaviso e integración" },
+        organismos: "ARCA (ex AFIP: aportes y Ganancias), ANSES, obra social sindical, ART (accidentes)",
+        secciones: [
+          ["Mínimo y jornada", ["Salario Mínimo, Vital y Móvil: $ 398.800 en noviembre de 2026 y $ 406.400 desde el 1/12/2026 (Resolución 4/2026). Cada convenio colectivo fija además su escala por categoría.", "Jornada de 8 horas diarias y 48 semanales. Hora extra: +50% en días comunes y +100% los sábados después de las 13, domingos y feriados. La Ley 27.802 (2026) permite acordar banco de horas."]],
+          ["Lo que aporta el trabajador", ["17% del bruto: jubilación (SIPA) 11%, PAMI 3% y obra social 3%. Además, la cuota sindical si corresponde.", "Impuesto a las Ganancias (4.ª categoría): solo lo pagan los sueldos altos; ARCA actualiza la escala y las deducciones cada semestre. Tasas de 5% a 35%."]],
+          ["Lo que paga la empresa", ["Contribuciones del 18% (PyME, industria) o 20,4% (comercio y servicios de empresas grandes), más 6% de obra social y la ART. Hay una detracción fija por trabajador que baja la base.", "Ley 27.802: contribuciones reducidas para nuevos empleos registrados y un Fondo de Asistencia Laboral para cubrir despidos (su entrada en vigencia se postergó)."]],
+          ["Aguinaldo y vacaciones", ["SAC (aguinaldo): 50% de la mejor remuneración mensual del semestre; se paga en junio y diciembre.", "Vacaciones: 14 días corridos hasta 5 años, 21 hasta 10, 28 hasta 20 y 35 con más de 20. Se pagan dividiendo el sueldo por 25."]],
+          ["Despido", ["Sin causa: 1 mejor sueldo mensual normal y habitual por año o fracción mayor de 3 meses (art. 245 LCT). Desde la Ley 27.802, sin SAC ni vacaciones en la base; el tope del convenio no puede bajarla más de un 33%.", "Más preaviso (15 días en período de prueba, 1 mes hasta 5 años, 2 meses después), integración del mes de despido, vacaciones y SAC proporcionales."]]
+        ],
+        fuentes: [["ARCA", "https://www.arca.gob.ar"], ["Resolución 4/2026 (SMVM)", "https://contadoresenred.com/?p=32942"], ["Ley 27.802 (Marval)", "https://www.marval.com/Publicacion/especial-ley-de-modernizacion-laboral-ley-27802-17500"]] },
+      { id: "CL", nombre: "Chile", moneda: "Peso chileno (CLP)",
+        resumen: { minimo: "$ 553.553 por mes (desde mayo 2026)", trab: "AFP 10% + comisión, salud 7%, cesantía 0,6%", emp: "Cesantía 2,4%, reforma previsional 3,5%, accidentes 0,9%+", renta: "Impuesto único de 0% a 40% (exento hasta 13,5 UTM)", extra: "Gratificación legal: 25% del sueldo, con tope", vac: "15 días hábiles + progresivo después de 10 años", despido: "30 días por año, máx. 11 años + aviso previo" },
+        organismos: "AFP (pensiones), Fonasa o Isapre (salud), AFC (cesantía), SII (impuesto), Dirección del Trabajo; se paga por Previred",
+        secciones: [
+          ["Mínimo y jornada", ["Ingreso mínimo mensual: $ 553.553 desde el 1/5/2026 (Ley 21.830); $ 412.938 para menores de 18 y mayores de 65. Se reajusta por IPC en enero de 2027.", "Jornada de 42 horas semanales desde abril de 2026 (Ley 40 horas: baja a 40 en 2028). Hora extra: +50%."]],
+          ["Lo que aporta el trabajador", ["AFP 10% más la comisión de su AFP (0,46% a 1,45%), salud 7% (Fonasa o Isapre), seguro de cesantía 0,6% si el contrato es indefinido. Tope imponible de unas 90 UF (135 UF para cesantía).", "Impuesto único de segunda categoría: exento hasta 13,5 UTM al mes; después, tramos de 4% a 40%. Lo retiene la empresa."]],
+          ["Lo que paga la empresa", ["Seguro de cesantía 2,4% (indefinido) o 3% (plazo fijo), seguro de accidentes 0,9% más la tasa adicional del rubro.", "Reforma previsional (Ley 21.735): aporte del empleador del 3,5% desde agosto de 2026, que sube año a año (incluye el seguro de invalidez y sobrevivencia)."]],
+          ["Gratificación y vacaciones", ["No hay aguinaldo obligatorio: hay gratificación legal, 25% del sueldo mensual con tope de 4,75 ingresos mínimos al año (o 30% de las utilidades).", "Feriado: 15 días hábiles al año; después de 10 años, 1 día más cada 3 años nuevos (feriado progresivo)."]],
+          ["Despido", ["Por necesidades de la empresa: 30 días de la última remuneración por año o fracción mayor de 6 meses, máximo 11 años, con tope de 90 UF de base.", "Aviso previo de 30 días o su pago (indemnización sustitutiva). El trabajador cobra además su seguro de cesantía."]]
+        ],
+        fuentes: [["Superintendencia de Pensiones", "https://www.spensiones.cl"], ["Ley 21.830 (Vialto)", "https://vialtopartners.com/regional-alerts/chile-employment-tax-new-monthly-minimum-wage-effective-may-2026"], ["Tabla de cotizaciones 2026 (Simplo)", "https://simplo.cl/recursos/tabla-cotizaciones-chile/"]] },
+      { id: "PY", nombre: "Paraguay", moneda: "Guaraní (PYG)",
+        resumen: { minimo: "Gs. 3.044.000 por mes (desde julio 2026)", trab: "IPS 9%", emp: "IPS 16,5%", renta: "IRP solo con ingresos > Gs. 80 millones al año", extra: "Aguinaldo: 1/12 de lo cobrado en el año, sin IPS", vac: "12, 18 o 30 días hábiles según antigüedad", despido: "15 jornales por año + preaviso de 30 a 90 días" },
+        organismos: "IPS (seguridad social), MTESS (trabajo y salario mínimo), DNIT (ex SET: IRP)",
+        secciones: [
+          ["Mínimo y jornada", ["Salario mínimo: Gs. 3.044.000 por mes desde el 1/7/2026 (Resolución MTESS 670/2026); jornal mínimo Gs. 117.077.", "Jornada diurna de 8 horas diarias y 48 semanales. Hora extra: +50%; domingos y feriados +100%."]],
+          ["Lo que aporta el trabajador", ["IPS 9% del sueldo (salud y jubilación).", "IRP (Impuesto a la Renta Personal): solo si los ingresos gravados del año superan Gs. 80.000.000; tasas de 8% a 10%. La mayoría de los sueldos no lo paga."]],
+          ["Lo que paga la empresa", ["IPS patronal 16,5% (en total 25,5% con el aporte del trabajador)."]],
+          ["Aguinaldo y vacaciones", ["Aguinaldo: 1/12 de todo lo cobrado en el año; se paga hasta el 31 de diciembre y no lleva IPS.", "Vacaciones: 12 días hábiles hasta 5 años, 18 de 5 a 10 y 30 con más de 10."]],
+          ["Despido", ["Injustificado: 15 jornales por cada año o fracción mayor de 6 meses, más vacaciones y aguinaldo proporcionales.", "Preaviso: 30 días hasta 1 año, 45 hasta 5, 60 hasta 10 y 90 con más de 10 años (o su pago)."]]
+        ],
+        fuentes: [["MTESS", "https://www.mtess.gov.py"], ["IPS", "https://portal.ips.gov.py"], ["Salario mínimo 2026 (yo-facturo)", "https://yo-facturo.com/blog/salario-minimo-paraguay-2026/"]] },
+      { id: "BR", nombre: "Brasil", moneda: "Real (BRL)",
+        resumen: { minimo: "R$ 1.621 por mes", trab: "INSS 7,5% a 14% (con tope)", emp: "INSS 20% + RAT + terceros, FGTS 8%", renta: "IRRF de 7,5% a 27,5% (exento hasta R$ 5.000)", extra: "13.º salario: un sueldo más por año, en dos cuotas", vac: "30 días corridos + 1/3 adicional", despido: "Multa del 40% del FGTS + aviso previo" },
+        organismos: "Receita Federal (IRRF), INSS (seguridad social), Caixa (FGTS), eSocial (registro de la nómina)",
+        secciones: [
+          ["Mínimo y jornada", ["Salario mínimo: R$ 1.621 por mes en 2026. Muchos estados y convenios fijan pisos más altos.", "Jornada de 8 horas diarias y 44 semanales. Hora extra: al menos +50%."]],
+          ["Lo que aporta el trabajador", ["INSS progresivo: 7,5% hasta R$ 1.621, 9% hasta R$ 2.902,84, 12% hasta R$ 4.354,27 y 14% hasta el tope de R$ 8.475,55 (máximo R$ 988,10).", "IRRF: tabla de 7,5% a 27,5%, pero desde 2026 (Ley 15.270/2025) no paga quien gana hasta R$ 5.000, y hay una rebaja decreciente hasta R$ 7.350. Deducción de R$ 189,59 por dependiente."]],
+          ["Lo que paga la empresa", ["INSS patronal 20% más RAT (1% a 3%, accidentes) y terceros (unos 5,8%), salvo empresas del Simples Nacional.", "FGTS: 8% del sueldo depositado cada mes en una cuenta a nombre del trabajador."]],
+          ["13.º salario y vacaciones", ["13.º salario: 1/12 por mes trabajado; primera cuota hasta el 30/11 y segunda hasta el 20/12.", "Vacaciones (férias): 30 días corridos por año, pagadas con un tercio adicional (1/3 constitucional)."]],
+          ["Despido", ["Sin justa causa: multa del 40% sobre el saldo del FGTS, aviso previo de 30 días más 3 por año (máximo 90), vacaciones y 13.º proporcionales.", "El trabajador retira su FGTS y puede cobrar el seguro-desemprego."]]
+        ],
+        fuentes: [["Tabla INSS 2026 (Portaria MPS/MF 13/2026)", "https://valorfinal.com.br/tabela-inss-2026"], ["Tabla IRRF 2026", "https://valorfinal.com.br/tabela-irrf-2026"], ["Receita Federal", "https://www.gov.br/receitafederal"]] }
+    ];
+  }
+  VIEWS.locacion = function () {
+    var lista = PAISES(), act = paisEmpresa(), ver = S.ui.paisVer || act;
+    var p = lista.filter(function (x) { return x.id === ver; })[0] || lista[0];
+    var filas = [["minimo", "Salario mínimo"], ["trab", "Aporta el trabajador"], ["emp", "Aporta la empresa"], ["renta", "Impuesto a la renta del sueldo"], ["extra", "Sueldo extra"], ["vac", "Vacaciones"], ["despido", "Despido sin causa"]];
+    return topbar("Locación", "País de la empresa y las reglas de sueldo más importantes de cada uno") +
+      '<div class="stack">' +
+      '<div class="card"><div class="card-h"><div><h2>¿Dónde está la empresa?</h2><p>Elegí el país. Se guarda con los datos de la empresa.</p></div></div><div class="card-b"><div class="paises" role="radiogroup" aria-label="País de la empresa">' +
+      lista.map(function (x) {
+        return '<button type="button" role="radio" class="pais" data-act="paisSel" data-id="' + x.id + '" aria-checked="' + (x.id === act) + '"><b>' + x.id + '</b><span>' + x.nombre + '</span><small>' + (x.calculo ? "Cálculo automático" : "Reglas de referencia") + '</small></button>';
+      }).join("") + '</div>' +
+      (act !== "UY" ? '<div class="msg" style="margin-top:12px">La empresa está en <b>' + esc(lista.filter(function (x) { return x.id === act; })[0].nombre) + '</b>. Abajo están sus reglas. Los recibos se siguen calculando con las reglas de Uruguay: el cálculo automático para ' + esc(lista.filter(function (x) { return x.id === act; })[0].nombre) + ' es el próximo paso.</div>' : '') +
+      '</div></div>' +
+      '<div class="card"><div class="card-h"><div><h2>Reglas de ' + esc(p.nombre) + '</h2><p>' + esc(p.moneda) + ' · ' + esc(p.organismos) + '</p></div>' +
+      '<label class="period" for="paisVer">Ver <select id="paisVer">' + lista.map(function (x) { return '<option value="' + x.id + '"' + (x.id === ver ? " selected" : "") + '>' + x.nombre + '</option>'; }).join("") + '</select></label></div>' +
+      '<div class="card-b"><div class="reglas">' + p.secciones.map(function (s) { return '<section><h3>' + esc(s[0]) + '</h3><ul>' + s[1].map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul></section>'; }).join("") + '</div>' +
+      '<p class="note" style="margin-top:12px">Fuentes: ' + p.fuentes.map(function (f) { return '<a href="' + esc(f[1]) + '" target="_blank" rel="noopener">' + esc(f[0]) + '</a>'; }).join(" · ") + '</p></div></div>' +
+      '<div class="card"><div class="card-h"><div><h2>Comparación entre países</h2><p>Lo fundamental de cada uno, lado a lado</p></div></div><div class="tbl-wrap"><table class="cmp"><thead><tr><th></th>' + lista.map(function (x) { return '<th' + (x.id === act ? ' class="sel"' : '') + '>' + x.nombre + '</th>'; }).join("") + '</tr></thead><tbody>' +
+      filas.map(function (f) { return '<tr><th scope="row">' + f[1] + '</th>' + lista.map(function (x) { return '<td' + (x.id === act ? ' class="sel"' : '') + '>' + esc(x.resumen[f[0]]) + '</td>'; }).join("") + '</tr>'; }).join("") +
+      '</tbody></table></div><div class="card-b"><p class="note">Valores vigentes a noviembre de 2026. Los mínimos y las escalas cambian seguido: confirmalos con el organismo de cada país antes de pagar sueldos.</p></div></div>' +
+      '</div>';
+  };
+  function guardarPais(id) {
+    var em = Object.assign({}, S.empresa || { nombre: "" }, { pais: id });
+    S.ui.paisVer = id;
+    if (!S.empresa) { S.empresa = em; render(); return; }
+    store.put("config", "empresa", em).then(function () { toast("País de la empresa: " + PAISES().filter(function (x) { return x.id === id; })[0].nombre); render(); });
+  }
+
+  // ---------- acciones ----------
+  function toast(t) { var el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { el.hidden = true; }, 2600); }
+  function go(v) { if (location.hash !== "#" + v) location.hash = v; else { S.view = v; render(); } }
+  function setView() { var v = (location.hash || "#panel").slice(1); S.view = VIEWS[v] ? v : "panel"; S.ui.confirm = null; render(); window.scrollTo(0, 0); }
+  window.addEventListener("hashchange", setView);
+
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-act]"); if (!b) return;
+    var a = b.dataset.act;
+    if (a === "empNew") { S.ui.emp = "nuevo"; render(); var f = $("emp_nombre"); if (f) f.focus(); }
+    else if (a === "empEdit") { S.ui.emp = b.dataset.id; render(); var fe = $("empForm"); if (fe) fe.scrollIntoView({ block: "start" }); }
+    else if (a === "empClose") { S.ui.emp = null; render(); }
+    else if (a === "paisSel") guardarPais(b.dataset.id);
+    else if (a === "novTab") { S.ui.novTab = b.dataset.tab; S.keepScroll = true; render(); }
+    else if (a === "nomina") exportarNomina();
+    else if (a === "mailOpen") { S.ui.mail = S.ui.mail === b.dataset.key ? null : b.dataset.key; S.ui.rec = b.dataset.key; S.keepScroll = true; render(); }
+    else if (a === "copyMail") { var mt = $("mailTxt"); if (mt) { try { navigator.clipboard.writeText(mt.textContent).then(function () { toast("Texto del mail copiado"); }, function () { selectText(mt); }); } catch (e2) { selectText(mt); } } }
+    else if (a === "lauAdd") { S.ui.laudosDraft = leerLaudos().concat([{ id: "c" + Date.now().toString(36), grupo: "", nombre: "", mensual: "", jornal: "" }]); S.keepScroll = true; render(); }
+    else if (a === "lauDel") { var dl = leerLaudos(); dl.splice(+b.dataset.i, 1); S.ui.laudosDraft = dl; S.keepScroll = true; render(); }
+    else if (a === "aumentoAsk") { var pc = nz(($("aum_pct") || {}).value); if (!(pc > 0)) { toast("Escribí el porcentaje de aumento."); return; } S.ui.aumento = pc; S.ui.confirm = "aumento"; S.keepScroll = true; render(); }
+    else if (a === "aumento") aplicarAumento();
+    else if (a === "egresoDe") { S.ui.egreso = { id: b.dataset.id, fecha: hoyISO(), motivo: "despido" }; }
+    else if (a === "liqOpen") { S.ui.liqOpen = S.ui.liqOpen === b.dataset.id ? null : b.dataset.id; S.keepScroll = true; render(); }
+    else if (a === "closeAsk") { S.ui.confirm = "close"; S.keepScroll = true; render(); }
+    else if (a === "reopenAsk") { S.ui.confirm = "reopen"; S.keepScroll = true; render(); }
+    else if (a === "agAsk") { S.ui.confirm = "agClose"; S.keepScroll = true; render(); }
+    else if (a === "egAsk") { S.ui.confirm = "egClose"; S.keepScroll = true; render(); }
+    else if (a === "demoAsk") { S.ui.confirm = "demo"; S.keepScroll = true; render(); }
+    else if (a === "wipeAsk") { S.ui.confirm = "wipe"; S.keepScroll = true; render(); }
+    else if (a === "cancelConfirm") { S.ui.confirm = null; S.keepScroll = true; render(); }
+    else if (a === "close") cerrarMes();
+    else if (a === "reopen") { var l = liqDe(S.periodo, "mensual"); S.ui.confirm = null; if (l) store.del("liquidaciones", l.id).then(function () { toast("Liquidación reabierta"); render(); }); }
+    else if (a === "agClose") emitirAguinaldo();
+    else if (a === "egClose") confirmarEgreso();
+    else if (a === "csv") exportarCSV();
+    else if (a === "review") revisarIA();
+    else if (a === "novAI") novedadesIA();
+    else if (a === "novAIapply") aplicarNovIA();
+    else if (a === "novAIdiscard") { S.ui.novAI = null; render(); }
+    else if (a === "recSel") { S.ui.rec = b.dataset.key; render(); }
+    else if (a === "recFilter") { S.ui.recFiltro = b.dataset.liq; S.ui.rec = null; }
+    else if (a === "explain") explicarIA(b.dataset.key);
+    else if (a === "copyMsg") { var t = $("exMsg").textContent; try { navigator.clipboard.writeText(t).then(function () { toast("Mensaje copiado"); }, function () { selectText($("exMsg")); }); } catch (e) { selectText($("exMsg")); } }
+    else if (a === "recDown") descargarRecibo(b.dataset.key);
+    else if (a === "print") window.print();
+    else if (a === "paramReset") { var d = {}; for (var k in P0) d[k] = P0[k]; store.put("config", "parametros", d).then(function () { toast("Parámetros 2026 restaurados"); render(); }); }
+    else if (a === "backup") descargar("recibo-claro-respaldo-" + hoyISO() + ".json", JSON.stringify({ app: "Recibo Claro", version: 2, empresa: S.empresa, params: S.params, laudos: S.laudos, empleados: S.empleados, novedades: S.novedades, liqs: S.liqs }, null, 1), "application/json");
+    else if (a === "demo") cargarDemo();
+    else if (a === "wipe") borrarTodo();
+  });
+  function selectText(el) { var r = document.createRange(); r.selectNodeContents(el); var s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Texto seleccionado: copialo con Ctrl+C"); }
+
+  document.addEventListener("change", function (ev) {
+    var t = ev.target;
+    if (t.id === "per") { if (/^\d{4}-\d{2}$/.test(t.value)) { S.periodo = t.value; S.ui.review = null; S.ui.liqOpen = null; render(); } }
+    else if (t.id === "agSem") { S.ui.agSem = t.value; S.ui.confirm = null; render(); }
+    else if (t.id === "paisVer") { S.ui.paisVer = t.value; S.keepScroll = true; render(); }
+    else if (t.id === "recF") { S.ui.recFiltro = t.value; S.ui.rec = null; render(); }
+    else if (t.id === "restore" && t.files && t.files[0]) restaurar(t.files[0]);
+    else if (t.dataset && t.dataset.nov) guardarNov(t);
+  });
+  var novTimer = null;
+  document.addEventListener("input", function (ev) {
+    var t = ev.target;
+    if (t.dataset && t.dataset.nov) { t.classList.add("changed"); clearTimeout(novTimer); novTimer = setTimeout(function () { guardarNov(t, true); }, 500); }
+    if (t.id === "novTxt") { S.ui.novAI = S.ui.novAI || {}; S.ui.novAI.texto = t.value; }
+  });
+  document.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var f = ev.target, fd = {}, fid = f.getAttribute("id");
+    Array.prototype.forEach.call(f.elements, function (el) { if (!el.name) return; fd[el.name] = el.type === "checkbox" ? el.checked : el.value; });
+    if (fid === "fEmp") {
+      if (!fd.nombre.trim() || !fd.ingreso) { toast("Completá el nombre y la fecha de ingreso."); return; }
+      var id = f.dataset.id === "nuevo" ? uid() : f.dataset.id, old = S.empleados[id] || {};
+      var e = Object.assign({}, old, { id: id });
+      CAMPOS_EMP.forEach(function (c) {
+        var k = c[0]; if (!k) return;
+        if (c[2] === "number") e[k] = nz(fd[k]);
+        else if (c[2] === "check") e[k] = !!fd[k];
+        else e[k] = String(fd[k] == null ? "" : fd[k]).trim();
+      });
+      e.horasSemanales = e.horasSemanales || 48; e.fondoCat = nz(e.fondoCat);
+      if (e.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e.email)) { toast("Revisá el mail: no parece válido."); return; }
+      if (e.tipo === "mensual" && !e.sueldo) { toast("Cargá el sueldo mensual."); return; }
+      if (e.tipo === "jornalero" && !e.jornal) { toast("Cargá el jornal."); return; }
+      store.put("empleados", id, e).then(function () { S.ui.emp = null; toast("Empleado guardado"); render(); });
+    } else if (fid === "fEmpresa") {
+      if (!fd.nombre.trim()) { toast("Escribí la razón social."); return; }
+      store.put("config", "empresa", Object.assign({}, S.empresa || {}, fd)).then(function () { toast("Empresa guardada"); render(); });
+    } else if (fid === "fParam") {
+      var p = P(); for (var k in fd) p[k] = nz(fd[k]);
+      store.put("config", "parametros", p).then(function () { toast("Parámetros guardados"); render(); });
+    } else if (fid === "fLaudos") {
+      var items = leerLaudos().filter(function (c) { return c.nombre || c.grupo || c.mensual !== "" || c.jornal !== ""; });
+      store.put("config", "laudos", { items: items, actualizado: Date.now() }).then(function () { S.ui.laudosDraft = null; toast("Categorías guardadas"); render(); });
+    } else if (fid === "fEgr") {
+      if (!fd.empleado) { toast("Elegí un empleado."); return; }
+      S.ui.egreso = { id: fd.empleado, fecha: fd.fecha, motivo: fd.motivo, diasMes: fd.diasMes === "" ? null : nz(fd.diasMes), licenciaPendiente: nz(fd.licenciaPendiente), adelantos: nz(fd.adelantos) };
+      S.ui.confirm = null; render();
+    }
+  });
+
+  function guardarNov(t, quiet) {
+    var per = S.periodo, id = t.dataset.id, campo = t.dataset.nov;
+    var doc = S.novedades[per] ? JSON.parse(JSON.stringify(S.novedades[per])) : { periodo: per, items: {} };
+    doc.items[id] = doc.items[id] || {};
+    var v = t.value === "" ? "" : nz(t.value);
+    if (doc.items[id][campo] === v || (doc.items[id][campo] == null && v === "")) return;
+    if (v === "") delete doc.items[id][campo]; else doc.items[id][campo] = v;
+    doc.actualizado = Date.now();
+    store.put("novedades", per, doc);
+  }
+
+  function cerrarMes() {
+    var recs = calcMes(S.periodo), now = new Date().toISOString();
+    recs.forEach(function (r) { r.emitido = now; });
+    S.ui.confirm = null;
+    store.put("liquidaciones", liqId(S.periodo, "mensual"), { id: liqId(S.periodo, "mensual"), periodo: S.periodo, tipo: "mensual", estado: "cerrada", cerrada: now, recibos: recs })
+      .then(function () { toast(recs.length + " recibos emitidos"); S.ui.recFiltro = liqId(S.periodo, "mensual"); S.ui.rec = null; render(); });
+  }
+  function emitirAguinaldo() {
+    var per = agPeriodo(), recs = calcAguinaldo(per), now = new Date().toISOString();
+    recs.forEach(function (r) { r.emitido = now; });
+    S.ui.confirm = null;
+    store.put("liquidaciones", liqId(per, "aguinaldo"), { id: liqId(per, "aguinaldo"), periodo: per, tipo: "aguinaldo", estado: "cerrada", cerrada: now, recibos: recs })
+      .then(function () { toast("Recibos de aguinaldo emitidos"); render(); });
+  }
+  function confirmarEgreso() {
+    var g = S.ui.egreso, e = g && S.empleados[g.id]; if (!e) return;
+    var r = calcEgreso(e, g), now = new Date().toISOString(); r.emitido = now;
+    var id = "egreso-" + e.id + "-" + g.fecha;
+    S.ui.confirm = null;
+    store.put("liquidaciones", id, { id: id, periodo: g.fecha.slice(0, 7), fecha: g.fecha, motivo: g.motivo, tipo: "egreso", estado: "cerrada", cerrada: now, recibos: [r] })
+      .then(function () { return store.put("empleados", e.id, Object.assign({}, e, { egreso: g.fecha, motivoEgreso: g.motivo })); })
+      .then(function () { toast("Egreso registrado"); S.ui.egreso = null; S.ui.recFiltro = id; S.ui.rec = null; go("recibos"); });
+  }
+
+  // CSV para Excel (separador ; y BOM, como lo abre Excel en español)
+  function exportarCSV() {
+    var recs = calcMes(S.periodo), cols = ["Empleado", "Cédula", "Cargo", "Nominal gravado", "Aporte jubilatorio", "FONASA", "FRL", "IRPF", "Fondo de Solidaridad", "Pensión y retenciones", "Adelantos y otros", "Haberes", "Descuentos", "Líquido", "Jubilatorio patronal", "FONASA patronal", "FRL patronal", "FGCL", "BSE", "Costo empresa"];
+    var n = function (v) { return nz(v).toFixed(2).replace(".", ","); };
+    var L = function (r, c) { var x = r.lineas.filter(function (l) { return l.concepto === c; })[0]; return x ? -x.monto : 0; };
+    var rows = recs.map(function (r) {
+      var t = r.totales, d = t.patronalDetalle || {};
+      return [r.empleado.nombre, r.empleado.ci || "", r.empleado.cargo || "", n(t.gravado), n(L(r, "Aporte jubilatorio")), n(L(r, "FONASA")), n(L(r, "FRL")), n(t.irpf), n(L(r, "Fondo de Solidaridad")), n(r.lineas.filter(function (l) { return l.retencion; }).reduce(function (s, l) { return s - l.monto; }, 0)), n(L(r, "Adelantos") + L(r, "Otros descuentos")), n(t.haberes), n(t.descuentos), n(t.liquido), n(d.jub), n(d.fonasa), n(d.frl), n(d.fgcl), n(d.bse), n(t.costo)];
+    });
+    var csv = "﻿" + [cols].concat(rows).map(function (r) { return r.map(function (c) { c = String(c); return /[;"\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c; }).join(";"); }).join("\r\n");
+    descargar("liquidacion-" + S.periodo + ".csv", csv, "text/csv");
+  }
+  // Nómina para BPS: un renglón por trabajador con lo que se declara en la nómina mensual (resumen para pasar a GAFI, no el archivo oficial)
+  function exportarNomina() {
+    var recs = calcMes(S.periodo), p = P();
+    var cols = ["Cédula", "Nombre", "Fecha de ingreso", "Forma de pago", "Horas semanales", "Días trabajados", "Días certificación médica", "Días accidente de trabajo", "Días seguro de paro", "Días de licencia",
+      "Nominal gravado", "Base aporte jubilatorio", "Aporte jubilatorio personal", "FONASA personal %", "FONASA personal", "FRL personal", "Cónyuge a cargo", "Hijos a cargo", "Jubilatorio patronal", "FONASA patronal", "FRL patronal", "FGCL", "Total a pagar a BPS", "IRPF retenido", "Fondo de Solidaridad", "No gravado (salario vacacional, alimentación exenta y otros)"];
+    var n = function (v) { return nz(v).toFixed(2).replace(".", ","); };
+    var Lm = function (r, c) { var x = r.lineas.filter(function (l) { return l.concepto === c; })[0]; return x ? -x.monto : 0; };
+    var tot = {};
+    var rows = recs.map(function (r) {
+      var e = S.empleados[r.empleado.id] || r.empleado, t = r.totales, d = t.patronalDetalle || {}, nv = r.novedades || {};
+      var jub = Lm(r, "Aporte jubilatorio"), fon = Lm(r, "FONASA"), frl = Lm(r, "FRL");
+      var bps = jub + fon + frl + nz(d.jub) + nz(d.fonasa) + nz(d.frl) + nz(d.fgcl);
+      var dias = t.diasTrab != null && e.tipo === "jornalero" ? t.diasTrab : e.tipo === "jornalero" ? (nv.diasTrabajados === "" || nv.diasTrabajados == null ? 25 : nz(nv.diasTrabajados)) : Math.max(0, 30 - nz(nv.faltas) - nz(nv.certificacion) - nz(nv.accidente) - nz(nv.paroDias));
+      var row = { jub: jub, fon: fon, frl: frl, pj: d.jub, pf: d.fonasa, pfr: d.frl, fg: d.fgcl, bps: bps, irpf: t.irpf, fondo: t.fondo || Lm(r, "Fondo de Solidaridad"), grav: t.gravado, nog: t.haberes - t.gravado - nz(Lm(r, "Indemnización por despido")) };
+      Object.keys(row).forEach(function (k) { tot[k] = (tot[k] || 0) + nz(row[k]); });
+      return [e.ci || "", e.nombre, fechaUY(e.ingreso), e.tipo === "jornalero" ? "Jornalero" : "Mensual", nz(e.horasSemanales) || 48, dias, nz(nv.certificacion), nz(nv.accidente), nz(nv.paroDias), nz(nv.licencia),
+        n(t.gravado), n(Math.min(t.gravado, p.topeJub)), n(jub), String(t.tasaFonasa).replace(".", ","), n(fon), n(frl), e.conyuge ? "Sí" : "No", e.hijosFonasa ? "Sí" : "No", n(d.jub), n(d.fonasa), n(d.frl), n(d.fgcl), n(bps), n(t.irpf), n(row.fondo), n(row.nog)];
+    });
+    rows.push(["", "TOTAL", "", "", "", "", "", "", "", "", n(tot.grav), "", n(tot.jub), "", n(tot.fon), n(tot.frl), "", "", n(tot.pj), n(tot.pf), n(tot.pfr), n(tot.fg), n(tot.bps), n(tot.irpf), n(tot.fondo), n(tot.nog)]);
+    var em = S.empresa || {};
+    var head = [["Nómina para BPS · " + perLabel(S.periodo) + " · " + (em.nombre || "") + " · RUT " + (em.rut || "") + " · N.º BPS " + (em.bps || "")], ["Resumen para cargar en GAFI o pasarle al contador. No es el archivo oficial de ATYR."], []];
+    var csv = "\uFEFF" + head.concat([cols]).concat(rows).map(function (r) { return r.map(function (c) { c = String(c); return /[;"\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c; }).join(";"); }).join("\r\n");
+    descargar("nomina-bps-" + S.periodo + ".csv", csv, "text/csv");
+  }
+  function descargar(nombre, data, tipo) {
+    if (hasClaude) {
+      window.claude.use("downloads").then(function (d) {
+        if (!d) { toast("La descarga no está disponible en esta vista."); return; }
+        d.save({ filename: nombre, data: data }).then(function () { toast("Archivo listo: " + nombre); }, function (e) { if (e && e.code !== "declined") toast("No se pudo descargar el archivo."); });
+      });
+      return;
+    }
+    try {
+      var url = URL.createObjectURL(new Blob([data], { type: tipo })), a = document.createElement("a");
+      a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    } catch (e) { toast("No se pudo descargar el archivo."); }
+  }
+  function recPorKey(key) { return recibosEmitidos().filter(function (x) { return x.key === key; })[0]; }
+  function descargarRecibo(key) {
+    var x = recPorKey(key); if (!x) return;
+    var css = Array.prototype.map.call(document.querySelectorAll("style"), function (s) { return s.textContent; }).join("\n");
+    var html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(TIPO_REC[x.r.tipo] + " · " + x.r.empleado.nombre) + '</title><style>' + css + ' body{background:#fff;padding:24px} .recibo{margin:0 auto;box-shadow:none}</style></head><body>' + reciboHTML(x.r) + '<p class="no-print" style="text-align:center;font:14px sans-serif;color:#555">Para guardarlo en PDF: Imprimir → Guardar como PDF.</p></body></html>';
+    var nombre = (x.r.tipo + "-" + (x.r.fecha || x.r.periodo) + "-" + x.r.empleado.nombre).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-") + ".html";
+    descargar(nombre, html, "text/html");
+  }
+  function restaurar(file) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      var d; try { d = JSON.parse(fr.result); } catch (e) { toast("Ese archivo no es un respaldo de Recibo Claro."); return; }
+      if (!d || d.app !== "Recibo Claro") { toast("Ese archivo no es un respaldo de Recibo Claro."); return; }
+      reemplazarTodo(d.empresa, d.params, d.empleados || {}, d.novedades || {}, d.liqs || {}, d.laudos || null).then(function () { toast("Respaldo restaurado"); go("panel"); });
+    };
+    fr.readAsText(file);
+  }
+  function reemplazarTodo(empresa, params, emps, novs, liqs, laudos) {
+    var ops = [];
+    if (laudos) ops.push(store.put("config", "laudos", laudos)); else if (S.laudos) { if (DB) ops.push(DB.doc("config/laudos").delete()); S.laudos = null; }
+    Object.keys(S.empleados).forEach(function (k) { if (!emps[k]) ops.push(store.del("empleados", k)); });
+    Object.keys(S.novedades).forEach(function (k) { if (!novs[k]) ops.push(store.del("novedades", k)); });
+    Object.keys(S.liqs).forEach(function (k) { if (!liqs[k]) ops.push(store.del("liquidaciones", k)); });
+    if (empresa) ops.push(store.put("config", "empresa", empresa)); else if (DB) ops.push(DB.doc("config/empresa").delete().then(function () { S.empresa = null; })); else S.empresa = null;
+    if (params) ops.push(store.put("config", "parametros", params));
+    Object.keys(emps).forEach(function (k) { ops.push(store.put("empleados", k, emps[k])); });
+    Object.keys(novs).forEach(function (k) { ops.push(store.put("novedades", k, novs[k])); });
+    Object.keys(liqs).forEach(function (k) { ops.push(store.put("liquidaciones", k, liqs[k])); });
+    if (!DB) saveLocal();
+    return Promise.all(ops);
+  }
+  function cargarDemo() {
+    var d = DEMO.build(ENGINE, hoyISO().slice(0, 7));
+    S.ui.confirm = null;
+    reemplazarTodo(d.empresa, d.params, d.empleados, d.novedades, d.liqs, d.laudos).then(function () { S.periodo = hoyISO().slice(0, 7); toast("Empresa de ejemplo cargada"); go("panel"); });
+  }
+  function borrarTodo() { S.ui.confirm = null; reemplazarTodo(null, null, {}, {}, {}).then(function () { toast("Datos borrados"); go("panel"); }); }
+
+  // ---------- IA ----------
+  var CAMPOS_IA = CAMPOS_NOV.map(function (c) { return c[0] + " (" + c[1] + (c[2] ? ", solo " + c[2] : "") + ")"; }).join(", ");
+  function novedadesIA() {
+    var txt = ($("novTxt") && $("novTxt").value || "").trim();
+    if (!txt) { toast("Escribí las novedades primero."); return; }
+    var emps = activos();
+    S.ui.novAI = { texto: txt, loading: true }; render();
+    var prompt = ["Sos asistente de liquidación de sueldos de una empresa uruguaya. Pasá el texto de RR.HH. a cambios en la planilla de novedades de " + perLabel(S.periodo) + ".",
+      "Empleados (id, nombre, forma de pago): " + JSON.stringify(emps.map(function (e) { return [e.id, e.nombre, e.tipo]; })),
+      "Campos posibles: " + CAMPOS_IA + ". Los montos van en pesos uruguayos, sin puntos de miles. Las horas y días, como número.",
+      "Novedades ya cargadas: " + JSON.stringify((S.novedades[S.periodo] || {}).items || {}),
+      "Si el texto dice que algo se suma a lo que ya había (\"otras\", \"más\"), usá modo \"sumar\"; si no, \"reemplazar\". Un día de falta es faltas = 1. \"Se toma licencia\" o \"vacaciones\" es licencia en días. Certificado médico o \"está enfermo con certificado\" es certificacion; accidente laboral es accidente; seguro de paro o suspensión es paroDias; examen o parcial es licEstudio; nacimiento de un hijo (padre) es licPaternidad; casamiento es licMatrimonio; fallecimiento de un familiar es licDuelo; tickets o partida de comida en pesos es alimentacion. Si un nombre es ambiguo o algo no se puede cargar, ponelo en no_entendido.",
+      "Texto: \"\"\"" + txt + "\"\"\"",
+      'Respondé SOLO con JSON: {"cambios":[{"empleado_id":string,"campo":string,"valor":number,"modo":"reemplazar"|"sumar","explicacion":string (pocas palabras)}],"no_entendido":[string]}'].join("\n");
+    AI.json(prompt).then(function (r) {
+      var cur = (S.novedades[S.periodo] || {}).items || {}, ok = [];
+      (r && r.cambios || []).forEach(function (c) {
+        var e = S.empleados[c.empleado_id], campo = CAMPOS_NOV.filter(function (x) { return x[0] === c.campo; })[0];
+        if (!e || !campo || (campo[2] && campo[2] !== e.tipo) || !isFinite(Number(c.valor))) return;
+        var antes = (cur[e.id] || {})[c.campo], valor = Number(c.valor);
+        if (c.modo === "sumar") valor = nz(antes) + valor;
+        ok.push({ id: e.id, nombre: e.nombre, campo: c.campo, label: campo[1], antes: antes, valor: Math.max(0, Math.round(valor * 100) / 100), explicacion: c.explicacion });
+      });
+      S.ui.novAI = { texto: txt, cambios: ok, dudas: (r && r.no_entendido || []).map(String).slice(0, 6) }; render();
+    }, function (e) { S.ui.novAI = { texto: txt, error: aiError(e) }; render(); });
+  }
+  function aplicarNovIA() {
+    var ai = S.ui.novAI; if (!ai || !ai.cambios) return;
+    var per = S.periodo, doc = S.novedades[per] ? JSON.parse(JSON.stringify(S.novedades[per])) : { periodo: per, items: {} };
+    ai.cambios.forEach(function (c) { doc.items[c.id] = doc.items[c.id] || {}; doc.items[c.id][c.campo] = c.valor; });
+    doc.actualizado = Date.now();
+    store.put("novedades", per, doc).then(function () { toast(ai.cambios.length + (ai.cambios.length === 1 ? " novedad cargada" : " novedades cargadas")); S.ui.novAI = null; render(); });
+  }
+  function revisarIA() {
+    var recs = calcMes(S.periodo), p = P(), prev = liqDe(perPrev(S.periodo), "mensual");
+    S.ui.review = { periodo: S.periodo, loading: true }; S.keepScroll = true; render();
+    var filas = recs.map(function (r) {
+      var e = S.empleados[r.empleado.id] || r.empleado, pr = prev && prev.estado === "cerrada" ? prev.recibos.filter(function (x) { return x.empleado.id === e.id; })[0] : null;
+      return { nombre: e.nombre, cargo: e.cargo, tipo: e.tipo, sueldo: e.tipo === "jornalero" ? e.jornal + " por día" : e.sueldo, novedades: r.novedades, nominal: r.totales.gravado, irpf: r.totales.irpf, liquido: r.totales.liquido, nominal_mes_anterior: pr ? pr.totales.gravado : null };
+    });
+    var prompt = ["Sos contador y revisás la liquidación de sueldos de " + perLabel(S.periodo) + " de una empresa uruguaya antes de emitir los recibos.",
+      "Salario mínimo nacional: $" + p.smn + ". BPC: $" + p.bpc + ". Máximo legal: 8 horas extra por semana.",
+      "Liquidación: " + JSON.stringify(filas),
+      "Controles automáticos que ya se hicieron: " + JSON.stringify(revisar(S.periodo, recs).map(function (c) { return c.empleado + ": " + c.texto; })),
+      "Buscá otras cosas raras que convenga revisar: novedades que no cuadran con el cargo, comisiones o horas extra muy altas, licencias largas, adelantos grandes, diferencias con el mes anterior sin una novedad que las explique. No repitas los controles automáticos. Si todo está bien, devolvé observaciones vacías. Español rioplatense, frases cortas.",
+      'Respondé SOLO con JSON: {"resumen":string (1-2 frases),"observaciones":[{"nivel":"alta"|"media"|"baja","empleado":string,"texto":string,"sugerencia":string}]}'].join("\n");
+    AI.json(prompt).then(function (r) {
+      S.ui.review = { periodo: S.periodo, resumen: r && r.resumen ? String(r.resumen) : "", obs: (r && r.observaciones || []).slice(0, 8).map(function (o) { return { nivel: /alta|media|baja/.test(o.nivel) ? o.nivel : "baja", empleado: String(o.empleado || ""), texto: String(o.texto || ""), sugerencia: String(o.sugerencia || "") }; }) };
+      S.keepScroll = true; render();
+    }, function (e) { S.ui.review = { periodo: S.periodo, error: aiError(e) }; S.keepScroll = true; render(); });
+  }
+  function explicarIA(key) {
+    var x = recPorKey(key); if (!x) return;
+    S.ui.explain[key] = { loading: true }; S.ui.rec = key; render();
+    var r = x.r, p = P();
+    var prompt = ["Sos de RR.HH. en una empresa uruguaya. Explicá este recibo en lenguaje simple para el empleado, sin tecnicismos.",
+      "Tipo: " + TIPO_REC[r.tipo] + ". Período: " + (r.fecha || r.periodo) + ". Empleado: " + r.empleado.nombre + " (" + (r.empleado.tipo === "jornalero" ? "jornalero" : "mensual") + ").",
+      "Líneas (concepto, monto, detalle; negativos son descuentos): " + JSON.stringify(r.lineas.map(function (l) { return [l.concepto, l.monto, l.detalle]; })),
+      (r.notas && r.notas.length ? "Notas del recibo: " + JSON.stringify(r.notas) : ""),
+      "Totales: haberes $" + r.totales.haberes + ", descuentos $" + r.totales.descuentos + ", líquido $" + r.totales.liquido + ".",
+      "Reglas que aplican: aporte jubilatorio 15% al BPS; FONASA (salud) 3% a 8% según ingreso y si tiene cónyuge o hijos a cargo; FRL 0,1%; IRPF solo si gana más de 7 BPC ($" + Math.round(7 * p.bpc) + "), con deducciones por aportes e hijos; el salario vacacional y la licencia no gozada no llevan aportes; la indemnización por despido no lleva aportes ni IRPF; los días con certificación médica, accidente o seguro de paro no los paga la empresa sino el BPS o el BSE; la alimentación no lleva aportes hasta un tope pero paga IRPF; el Fondo de Solidaridad se deduce del IRPF; la pensión alimenticia es una orden judicial; las retenciones (cuota sindical, préstamos) tienen un límite para que el trabajador cobre al menos el 35% del líquido; en diciembre el IRPF se ajusta con todo el año.",
+      "Usá solo los números del recibo; no inventes otros. Español rioplatense, frases cortas.",
+      'Respondé SOLO con JSON: {"resumen":string (1-2 frases: cuánto cobra y por qué),"puntos":[string] (3 a 6, uno por cada descuento o haber importante),"mensaje":string (mensaje corto y amable para mandarle al empleado por WhatsApp o mail)}'].join("\n");
+    AI.json(prompt).then(function (o) {
+      S.ui.explain[key] = { resumen: String(o && o.resumen || ""), puntos: (o && o.puntos || []).map(String).slice(0, 8), mensaje: String(o && o.mensaje || "") }; render();
+    }, function (e) { S.ui.explain[key] = { error: aiError(e) }; render(); });
+  }
+
+  // ---------- inicio ----------
+  setView();
+  startStore();
+  startAI();
+})();
+
+</script>
+</body>
+</html>
